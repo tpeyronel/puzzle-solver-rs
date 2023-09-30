@@ -28,7 +28,7 @@ pub struct Node {
 
 #[derive(Debug, Clone)]
 pub struct Shape {
-    pub data: Vec<Node>,
+    pub nodes: Vec<Node>,
     pub bb_top_right: Vec2,
 }
 
@@ -44,7 +44,7 @@ impl Shape {
 
         let mut nodes_map: HashMap<Vec2i, NodeData> = HashMap::new();
 
-        for n in &self.data {
+        for n in &self.nodes {
             let pos = Vec2i::new(-(n.pos.y as i32), n.pos.x as i32);
 
             if n.data.intersects(NodeData::ALL_VERTICES | NodeData::EDGE_RIGHT) {
@@ -85,9 +85,9 @@ impl Shape {
 
 impl PartialEq for Shape {
     fn eq(&self, other: &Self) -> bool {
-        assert_eq!(self.data.len(), other.data.len());
+        assert_eq!(self.nodes.len(), other.nodes.len());
 
-        return Iterator::zip(self.data.iter(), other.data.iter()).all(|(a, b)| a == b);
+        return Iterator::zip(self.nodes.iter(), other.nodes.iter()).all(|(a, b)| a == b);
     }
 }
 
@@ -140,8 +140,8 @@ impl Node {
 }
 
 impl From<&[RawNode]> for Shape {
-    fn from(nodes: &[RawNode]) -> Self {
-        let data: Vec<Node> = nodes
+    fn from(raw_nodes: &[RawNode]) -> Self {
+        let nodes: Vec<Node> = raw_nodes
             .iter()
             .map(|(pos, nds)| Node {
                 data: nds.iter().fold(NodeData::empty(), |acc, &nd| acc | nd),
@@ -149,17 +149,17 @@ impl From<&[RawNode]> for Shape {
             })
             .collect();
 
-        let top_right: Vec2 = Node::bb_top_right(&data);
+        let bb_top_right: Vec2 = Node::bb_top_right(&nodes);
 
-        Self { data, bb_top_right: top_right }
+        Self { nodes, bb_top_right }
     }
 }
 
 impl From<Vec<Node>> for Shape {
-    fn from(data: Vec<Node>) -> Self {
-        let top_right = Node::bb_top_right(&data);
+    fn from(nodes: Vec<Node>) -> Self {
+        let bb_top_right = Node::bb_top_right(&nodes);
 
-        Self { data, bb_top_right: top_right }
+        Self { nodes, bb_top_right }
     }
 }
 
@@ -182,9 +182,9 @@ mod tests {
         for d in digits {
             let d_rot = d.rotated_ccw().rotated_ccw().rotated_ccw().rotated_ccw();
 
-            assert_eq!(d.data.len(), d_rot.data.len());
+            assert_eq!(d.nodes.len(), d_rot.nodes.len());
 
-            Iterator::zip(d.data.iter(), d_rot.data.iter()).for_each(|(a, b)| {
+            Iterator::zip(d.nodes.iter(), d_rot.nodes.iter()).for_each(|(a, b)| {
                 assert_eq!(a, b);
             });
         }

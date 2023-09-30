@@ -27,7 +27,7 @@ impl Board {
             return false;
         }
 
-        for n in &shape.data {
+        for n in &shape.nodes {
             if self.matrix[pos + n.pos].intersects(n.data) {
                 return false;
             }
@@ -37,7 +37,7 @@ impl Board {
     }
 
     pub fn put_at(&mut self, shape: &Shape, pos: Vec2) {
-        for n in &shape.data {
+        for n in &shape.nodes {
             self.matrix[pos + n.pos].insert(n.data);
         }
 
@@ -50,7 +50,7 @@ impl Board {
     pub fn remove_last(&mut self) {
         let PlacedShape { shape, pos } = self.placements.pop().expect("tried to remove_last() with no pieces");
 
-        for n in shape.data {
+        for n in shape.nodes {
             self.matrix[pos + n.pos].remove(n.data);
         }
     }
