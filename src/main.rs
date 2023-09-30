@@ -1,10 +1,9 @@
-use crate::logic::common::{NodeData, Shape};
-
 mod logic {
     pub mod board;
     pub mod common;
     pub mod digits;
     pub mod node_matrix;
+    pub mod shape;
 }
 
 fn main() {

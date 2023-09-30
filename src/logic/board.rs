@@ -1,7 +1,4 @@
-use super::{
-    common::{Shape, Vec2},
-    node_matrix::NodeMatrix,
-};
+use super::{common::Vec2, node_matrix::NodeMatrix, shape::Shape};
 
 struct PlacedShape {
     shape: Shape,

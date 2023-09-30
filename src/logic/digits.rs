@@ -1,4 +1,4 @@
-use super::common::{NodeData, Shape};
+use super::{common::NodeData, shape::Shape};
 
 #[rustfmt::skip]
 pub fn digit0() -> Shape {
