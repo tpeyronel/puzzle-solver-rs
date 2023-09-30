@@ -28,91 +28,93 @@ impl Shape {
     }
 
     pub fn rotated_ccw(&self) -> Self {
-        fn rotate_with(src: NodeData, dst: &mut NodeData, s: NodeData, r: NodeData) {
-            if src.contains(s) {
-                dst.insert(r);
-            }
-        }
-
-        let mut nodes_map: HashMap<Vec2i, NodeData> = HashMap::new();
-
-        for n in self.nodes() {
+        self.flat_map(|n, out| {
             let pos = Vec2i::new(-(n.pos.y as i32), n.pos.x as i32);
 
             if n.data.intersects(NodeData::ALL_VERTICES | NodeData::EDGE_RIGHT) {
                 let mut rot_ndata = NodeData::empty();
 
-                rotate_with(n.data, &mut rot_ndata, NodeData::VERTEX_RIGHT, NodeData::VERTEX_UP);
-                rotate_with(n.data, &mut rot_ndata, NodeData::VERTEX_UP, NodeData::VERTEX_LEFT);
-                rotate_with(n.data, &mut rot_ndata, NodeData::VERTEX_LEFT, NodeData::VERTEX_DOWN);
-                rotate_with(n.data, &mut rot_ndata, NodeData::VERTEX_DOWN, NodeData::VERTEX_RIGHT);
-                rotate_with(n.data, &mut rot_ndata, NodeData::EDGE_RIGHT, NodeData::EDGE_UP);
+                Self::replace_into(n.data, NodeData::VERTEX_RIGHT, &mut rot_ndata, NodeData::VERTEX_UP);
+                Self::replace_into(n.data, NodeData::VERTEX_UP, &mut rot_ndata, NodeData::VERTEX_LEFT);
+                Self::replace_into(n.data, NodeData::VERTEX_LEFT, &mut rot_ndata, NodeData::VERTEX_DOWN);
+                Self::replace_into(n.data, NodeData::VERTEX_DOWN, &mut rot_ndata, NodeData::VERTEX_RIGHT);
+                Self::replace_into(n.data, NodeData::EDGE_RIGHT, &mut rot_ndata, NodeData::EDGE_UP);
 
-                nodes_map.entry(pos).or_insert(NodeData::empty()).insert(rot_ndata);
+                out.push(UnnormalizedNode { data: rot_ndata, pos });
             }
 
             if n.data.contains(NodeData::EDGE_UP) {
-                nodes_map
-                    .entry(pos - Vec2i::new(1, 0))
-                    .or_insert(NodeData::empty())
-                    .insert(NodeData::EDGE_RIGHT);
+                out.push(UnnormalizedNode {
+                    data: NodeData::EDGE_RIGHT,
+                    pos: pos - Vec2i::new(1, 0),
+                });
             }
-        }
-
-        let nodes = nodes_map
-            .drain()
-            .map(|(pos, data)| UnnormalizedNode { data, pos })
-            .collect::<Vec<UnnormalizedNode>>();
-
-        Self::from(nodes)
+        })
     }
 
     pub fn flipped_hor(&self) -> Self {
-        fn flip_with(src: NodeData, dst: &mut NodeData, s: NodeData, r: NodeData) {
-            if src.contains(s) {
-                dst.insert(r);
-            }
-        }
-
-        let mut nodes_map: HashMap<Vec2i, NodeData> = HashMap::new();
-
-        for n in self.nodes() {
+        self.flat_map(|n, out| {
             let pos = Vec2i::new(-(n.pos.x as i32), n.pos.y as i32);
 
-            if n.data.intersects(NodeData::ALL_VERTICES | NodeData::EDGE_UP) {
+            if n.data.intersects(NodeData::EDGE_UP | NodeData::ALL_VERTICES) {
                 let mut flipped_ndata =
-                    NodeData::intersection(n.data, NodeData::VERTEX_UP | NodeData::VERTEX_DOWN | NodeData::EDGE_UP);
+                    NodeData::intersection(n.data, NodeData::EDGE_UP | NodeData::VERTEX_UP | NodeData::VERTEX_DOWN);
 
-                flip_with(
+                Self::replace_into(
                     n.data,
-                    &mut flipped_ndata,
                     NodeData::VERTEX_RIGHT,
-                    NodeData::VERTEX_LEFT,
-                );
-                flip_with(
-                    n.data,
                     &mut flipped_ndata,
                     NodeData::VERTEX_LEFT,
+                );
+
+                Self::replace_into(
+                    n.data,
+                    NodeData::VERTEX_LEFT,
+                    &mut flipped_ndata,
                     NodeData::VERTEX_RIGHT,
                 );
 
-                nodes_map.entry(pos).or_insert(NodeData::empty()).insert(flipped_ndata);
+                out.push(UnnormalizedNode {
+                    data: flipped_ndata,
+                    pos,
+                });
             }
 
             if n.data.contains(NodeData::EDGE_RIGHT) {
-                nodes_map
-                    .entry(pos - Vec2i::new(1, 0))
-                    .or_insert(NodeData::empty())
-                    .insert(NodeData::EDGE_RIGHT);
+                out.push(UnnormalizedNode {
+                    data: NodeData::EDGE_RIGHT,
+                    pos: pos - Vec2i::new(1, 0),
+                });
+            }
+        })
+    }
+
+    fn replace_into(src: NodeData, s: NodeData, dst: &mut NodeData, r: NodeData) {
+        if src.contains(s) {
+            dst.insert(r);
+        }
+    }
+
+    fn flat_map<F: FnMut(&Node, &mut Vec<UnnormalizedNode>)>(&self, mut f: F) -> Self {
+        let mut nodes_map: HashMap<Vec2i, NodeData> = HashMap::new();
+
+        for n in self.nodes() {
+            let mut uns = vec![];
+            f(n, &mut uns);
+
+            for un in uns {
+                assert!(!un.data.is_empty());
+
+                nodes_map.entry(un.pos).or_insert(NodeData::empty()).insert(un.data);
             }
         }
 
-        let nodes = nodes_map
+        let unnorm_nodes = nodes_map
             .drain()
             .map(|(pos, data)| UnnormalizedNode { data, pos })
             .collect::<Vec<UnnormalizedNode>>();
 
-        Self::from(nodes)
+        Self::from(unnorm_nodes)
     }
 
     pub fn nodes(&self) -> &[Node] {
