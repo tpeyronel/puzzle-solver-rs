@@ -376,6 +376,7 @@ pub fn digit7() -> Shape {
                 vec![
                     NodeData::EDGE_UP,
                     NodeData::VERTEX_UP,
+                    NodeData::VERTEX_RIGHT,
                     NodeData::VERTEX_DOWN,
                 ],
             ),
