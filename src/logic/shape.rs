@@ -14,10 +14,12 @@ pub type RawNode = ((u32, u32), Vec<NodeData>);
 
 impl Shape {
     pub fn new(mut nodes: Vec<Node>) -> Self {
-        let bb_top_right = Node::bb_top_right(&nodes);
-
+        assert!(!Node::has_empty_node(&nodes));
+        Node::align_to_origin(&mut nodes);
         Node::sort(&mut nodes);
         assert!(!Node::has_duplicates(&nodes));
+
+        let bb_top_right = Node::bb_top_right(&nodes);
 
         Self { nodes, bb_top_right }
     }
@@ -109,7 +111,39 @@ impl From<Vec<UnnormalizedNode>> for Shape {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::digits::{digit1, digit1_rot_ccw, digits};
+    use crate::logic::{
+        common::{NodeData, Vec2},
+        digits::{digit1, digit1_rot_ccw, digits},
+    };
+
+    use super::Shape;
+
+    #[test]
+    #[should_panic]
+    fn new_fails_with_duplicate_nodes() {
+        let _ = Shape::from(
+            [
+                ((0, 0), vec![NodeData::VERTEX_RIGHT]),
+                ((0, 0), vec![NodeData::EDGE_RIGHT]),
+            ]
+            .as_slice(),
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn new_fails_with_empty_nodes() {
+        let _ = Shape::from([((0, 0), vec![NodeData::empty()])].as_slice());
+    }
+
+    #[test]
+    fn new_correctly_aligns_to_origin() {
+        let s = Shape::from([((2, 1), vec![NodeData::VERTEX_RIGHT])].as_slice());
+
+        assert_eq!(s.nodes.len(), 1);
+        assert_eq!(s.nodes[0].pos, Vec2::ZERO);
+        assert_eq!(s.nodes[0].data, NodeData::VERTEX_RIGHT);
+    }
 
     #[test]
     fn rotated_ccw_works_for_digit1() {

@@ -37,6 +37,14 @@ impl Node {
         a.pos.x.cmp(&b.pos.x).then_with(|| a.pos.y.cmp(&b.pos.y))
     }
 
+    pub fn align_to_origin(nodes: &mut [Node]) {
+        let bottom_left = nodes.iter().map(|n: &Node| n.pos).fold(Vec2::MAX, Vec2::min);
+
+        nodes.iter_mut().for_each(|n| {
+            n.pos -= bottom_left;
+        });
+    }
+
     pub fn sort(nodes: &mut [Node]) {
         nodes.sort_by(Self::node_pos_cmp);
     }
@@ -45,9 +53,13 @@ impl Node {
         nodes.windows(2).all(|w| Self::node_pos_cmp(&w[0], &w[1]).is_lt())
     }
 
-    // `nodes` must be sorted
+    /// `nodes` must be sorted
     pub fn has_duplicates(nodes: &[Node]) -> bool {
         nodes.windows(2).any(|w| Self::node_pos_cmp(&w[0], &w[1]).is_eq())
+    }
+
+    pub fn has_empty_node(nodes: &[Node]) -> bool {
+        nodes.iter().any(|n| n.data.is_empty())
     }
 
     pub fn bb_top_right<'a, I>(nodes: I) -> Vec2
