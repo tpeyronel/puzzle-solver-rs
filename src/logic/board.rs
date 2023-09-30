@@ -1,35 +1,7 @@
-use super::common::{NodeData, Shape, Vec2};
-use std::ops::{Deref, Index, IndexMut};
-
-struct BoardState {
-    width: usize,
-    height: usize,
-    nodes: Box<[NodeData]>,
-}
-
-impl BoardState {
-    fn new(width: usize, height: usize) -> Self {
-        Self {
-            width,
-            height,
-            nodes: vec![NodeData::empty(); width * height].into_boxed_slice(),
-        }
-    }
-}
-
-impl Index<Vec2> for BoardState {
-    type Output = NodeData;
-
-    fn index(&self, pos: Vec2) -> &Self::Output {
-        return &self.nodes[pos.x as usize + pos.y as usize * self.width];
-    }
-}
-
-impl IndexMut<Vec2> for BoardState {
-    fn index_mut(&mut self, pos: Vec2) -> &mut Self::Output {
-        return &mut self.nodes[pos.x as usize + pos.y as usize * self.width];
-    }
-}
+use super::{
+    common::{Shape, Vec2},
+    node_matrix::NodeMatrix,
+};
 
 struct PlacedShape {
     shape: Shape,
@@ -37,21 +9,26 @@ struct PlacedShape {
 }
 
 pub struct Board {
-    state: BoardState,
+    matrix: NodeMatrix,
     placements: Vec<PlacedShape>,
 }
 
 impl Board {
-    pub fn new(width: usize, height: usize) -> Self {
+    pub fn new(width: u32, height: u32) -> Self {
         Self {
-            state: BoardState::new(width, height),
+            matrix: NodeMatrix::new(width, height),
             placements: vec![],
         }
     }
 
-    pub fn fits_at(&self, shape: Shape, pos: Vec2) -> bool {
-        for n in shape.deref() {
-            if self.state[pos + n.pos].intersects(n.data) {
+    pub fn fits_at(&self, shape: &Shape, pos: Vec2) -> bool {
+        let bb_top_right = pos + shape.bb_top_right;
+        if bb_top_right.x >= self.matrix.width() || bb_top_right.y >= self.matrix.height() {
+            return false;
+        }
+
+        for n in &shape.data {
+            if self.matrix[pos + n.pos].intersects(n.data) {
                 return false;
             }
         }
@@ -59,22 +36,57 @@ impl Board {
         return true;
     }
 
-    pub fn put_at(&mut self, shape: Shape, pos: Vec2) {
-        for n in shape.deref() {
-            self.state[pos + n.pos].insert(n.data);
+    pub fn put_at(&mut self, shape: &Shape, pos: Vec2) {
+        for n in &shape.data {
+            self.matrix[pos + n.pos].insert(n.data);
         }
 
-        self.placements.push(PlacedShape { shape, pos });
+        self.placements.push(PlacedShape {
+            shape: shape.clone(),
+            pos,
+        });
     }
 
     pub fn remove_last(&mut self) {
-        let PlacedShape { shape, pos } = self
-            .placements
-            .pop()
-            .expect("tried to remove_last() with no pieces");
+        let PlacedShape { shape, pos } = self.placements.pop().expect("tried to remove_last() with no pieces");
 
-        for n in shape.deref() {
-            self.state[pos + n.pos].remove(n.data);
+        for n in shape.data {
+            self.matrix[pos + n.pos].remove(n.data);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::logic::{board::Board, common::Vec2, digits};
+
+    #[test]
+    fn digit0_fits() {
+        let b = Board::new(2, 3);
+        let d0 = digits::digit0();
+
+        assert!(b.fits_at(&d0, Vec2::new(0, 0)));
+        assert!(!b.fits_at(&d0, Vec2::new(1, 0)));
+    }
+
+    #[test]
+    fn digit1_fits() {
+        let b = Board::new(1, 3);
+        let d1 = digits::digit1();
+
+        assert!(b.fits_at(&d1, Vec2::new(0, 0)));
+        assert!(!b.fits_at(&d1, Vec2::new(1, 0)));
+    }
+
+    #[test]
+    fn digits_0_and_1_fit() {
+        let mut b = Board::new(3, 3);
+        let d0 = digits::digit0();
+        let d1 = digits::digit1().rotated_ccw().rotated_ccw().rotated_ccw();
+
+        assert!(b.fits_at(&d0, Vec2::new(1, 0)));
+        b.put_at(&d0, (1, 0).into());
+
+        assert!(b.fits_at(&d1, Vec2::new(0, 1)));
     }
 }

@@ -4,6 +4,7 @@ mod logic {
     pub mod board;
     pub mod common;
     pub mod digits;
+    pub mod node_matrix;
 }
 
 fn main() {
