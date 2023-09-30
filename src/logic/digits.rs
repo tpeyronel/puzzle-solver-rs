@@ -243,6 +243,60 @@ pub fn digit4() -> Shape {
 }
 
 #[rustfmt::skip]
+pub fn digit5() -> Shape {
+    Shape::from(
+        [
+            (
+                (0, 0),
+                vec![
+                    NodeData::EDGE_RIGHT,
+                    NodeData::VERTEX_RIGHT,
+                ],
+            ),
+            (
+                (0, 1),
+                vec![
+                    NodeData::EDGE_RIGHT,
+                    NodeData::EDGE_UP,
+                    NodeData::VERTEX_RIGHT,
+                    NodeData::VERTEX_UP,
+                ],
+            ),
+            (
+                (0, 2),
+                vec![
+                    NodeData::EDGE_RIGHT,
+                    NodeData::VERTEX_RIGHT,
+                    NodeData::VERTEX_DOWN,
+                ],
+            ),
+            (
+                (1, 0),
+                vec![
+                    NodeData::EDGE_UP,
+                    NodeData::VERTEX_UP,
+                    NodeData::VERTEX_LEFT,
+                ],
+            ),
+            (
+                (1, 1),
+                vec![
+                    NodeData::VERTEX_LEFT,
+                    NodeData::VERTEX_DOWN,
+                ],
+            ),
+            (
+                (1, 2),
+                vec![
+                    NodeData::VERTEX_LEFT,
+                ],
+            ),
+        ]
+        .as_slice(),
+    )
+}
+
+#[rustfmt::skip]
 pub fn digit8() -> Shape {
     Shape::from(
         [

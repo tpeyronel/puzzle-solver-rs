@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Deref};
+use std::collections::HashMap;
 
 use crate::logic::common::Vec2i;
 
@@ -21,7 +21,10 @@ impl Shape {
 
         let bb_top_right = Node::bb_top_right(&nodes);
 
-        Self { nodes: nodes.into_boxed_slice(), bb_top_right }
+        Self {
+            nodes: nodes.into_boxed_slice(),
+            bb_top_right,
+        }
     }
 
     pub fn rotated_ccw(&self) -> Self {
@@ -49,6 +52,54 @@ impl Shape {
             }
 
             if n.data.contains(NodeData::EDGE_UP) {
+                nodes_map
+                    .entry(pos - Vec2i::new(1, 0))
+                    .or_insert(NodeData::empty())
+                    .insert(NodeData::EDGE_RIGHT);
+            }
+        }
+
+        let nodes = nodes_map
+            .drain()
+            .map(|(pos, data)| UnnormalizedNode { data, pos })
+            .collect::<Vec<UnnormalizedNode>>();
+
+        Self::from(nodes)
+    }
+
+    pub fn flipped_hor(&self) -> Self {
+        fn flip_with(src: NodeData, dst: &mut NodeData, s: NodeData, r: NodeData) {
+            if src.contains(s) {
+                dst.insert(r);
+            }
+        }
+
+        let mut nodes_map: HashMap<Vec2i, NodeData> = HashMap::new();
+
+        for n in self.nodes() {
+            let pos = Vec2i::new(-(n.pos.x as i32), n.pos.y as i32);
+
+            if n.data.intersects(NodeData::ALL_VERTICES | NodeData::EDGE_UP) {
+                let mut flipped_ndata =
+                    NodeData::intersection(n.data, NodeData::VERTEX_UP | NodeData::VERTEX_DOWN | NodeData::EDGE_UP);
+
+                flip_with(
+                    n.data,
+                    &mut flipped_ndata,
+                    NodeData::VERTEX_RIGHT,
+                    NodeData::VERTEX_LEFT,
+                );
+                flip_with(
+                    n.data,
+                    &mut flipped_ndata,
+                    NodeData::VERTEX_LEFT,
+                    NodeData::VERTEX_RIGHT,
+                );
+
+                nodes_map.entry(pos).or_insert(NodeData::empty()).insert(flipped_ndata);
+            }
+
+            if n.data.contains(NodeData::EDGE_RIGHT) {
                 nodes_map
                     .entry(pos - Vec2i::new(1, 0))
                     .or_insert(NodeData::empty())
@@ -121,7 +172,7 @@ impl From<Vec<UnnormalizedNode>> for Shape {
 mod tests {
     use crate::logic::{
         common::{NodeData, Vec2},
-        digits::{digit1, digit1_rot_ccw, digits},
+        digits::{digit1, digit1_rot_ccw, digit2, digit5, digit8, digits},
     };
 
     use super::Shape;
@@ -168,11 +219,25 @@ mod tests {
         for d in digits {
             let d_rot = d.rotated_ccw().rotated_ccw().rotated_ccw().rotated_ccw();
 
-            assert_eq!(d.nodes.len(), d_rot.nodes.len());
-
-            Iterator::zip(d.nodes.iter(), d_rot.nodes.iter()).for_each(|(a, b)| {
-                assert_eq!(a, b);
-            });
+            assert_eq!(d, d_rot);
         }
+    }
+
+    #[test]
+    fn flipped_hor_is_involution() {
+        let digits = digits();
+
+        for d in digits {
+            let d_flipped = d.flipped_hor().flipped_hor();
+
+            assert_eq!(d, d_flipped);
+        }
+    }
+
+    #[test]
+    fn flipped_hor_works() {
+        assert_eq!(digit2(), digit5().flipped_hor());
+        assert_eq!(digit2().flipped_hor(), digit5());
+        assert_eq!(digit8().flipped_hor(), digit8());
     }
 }
