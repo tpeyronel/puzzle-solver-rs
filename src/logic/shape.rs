@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref};
 
 use crate::logic::common::Vec2i;
 
@@ -6,8 +6,8 @@ use super::common::{Node, NodeData, UnnormalizedNode, Vec2};
 
 #[derive(Debug, Clone)]
 pub struct Shape {
-    pub nodes: Vec<Node>,
-    pub bb_top_right: Vec2,
+    nodes: Box<[Node]>,
+    bb_top_right: Vec2,
 }
 
 pub type RawNode = ((u32, u32), Vec<NodeData>);
@@ -21,7 +21,7 @@ impl Shape {
 
         let bb_top_right = Node::bb_top_right(&nodes);
 
-        Self { nodes, bb_top_right }
+        Self { nodes: nodes.into_boxed_slice(), bb_top_right }
     }
 
     pub fn rotated_ccw(&self) -> Self {
@@ -33,7 +33,7 @@ impl Shape {
 
         let mut nodes_map: HashMap<Vec2i, NodeData> = HashMap::new();
 
-        for n in &self.nodes {
+        for n in self.nodes() {
             let pos = Vec2i::new(-(n.pos.y as i32), n.pos.x as i32);
 
             if n.data.intersects(NodeData::ALL_VERTICES | NodeData::EDGE_RIGHT) {
@@ -62,6 +62,14 @@ impl Shape {
             .collect::<Vec<UnnormalizedNode>>();
 
         Self::from(nodes)
+    }
+
+    pub fn nodes(&self) -> &[Node] {
+        self.nodes.as_ref()
+    }
+
+    pub fn bb_top_right(&self) -> Vec2 {
+        self.bb_top_right
     }
 }
 

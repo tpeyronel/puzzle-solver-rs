@@ -19,12 +19,12 @@ impl Board {
     }
 
     pub fn fits_at(&self, shape: &Shape, pos: Vec2) -> bool {
-        let bb_top_right = pos + shape.bb_top_right;
+        let bb_top_right = pos + shape.bb_top_right();
         if bb_top_right.x >= self.matrix.width() || bb_top_right.y >= self.matrix.height() {
             return false;
         }
 
-        for n in &shape.nodes {
+        for n in shape.nodes() {
             if self.matrix[pos + n.pos].intersects(n.data) {
                 return false;
             }
@@ -34,7 +34,7 @@ impl Board {
     }
 
     pub fn put_at(&mut self, shape: &Shape, pos: Vec2) {
-        for n in &shape.nodes {
+        for n in shape.nodes() {
             self.matrix[pos + n.pos].insert(n.data);
         }
 
@@ -47,7 +47,7 @@ impl Board {
     pub fn remove_last(&mut self) {
         let PlacedShape { shape, pos } = self.placements.pop().expect("tried to remove_last() with no pieces");
 
-        for n in shape.nodes {
+        for n in shape.nodes() {
             self.matrix[pos + n.pos].remove(n.data);
         }
     }

@@ -334,7 +334,7 @@ mod tests {
         let digits = super::digits();
 
         for d in digits {
-            assert!(Node::is_sorted(&d.nodes));
+            assert!(Node::is_sorted(d.nodes()));
         }
     }
 }
