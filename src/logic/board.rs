@@ -1,13 +1,13 @@
 use super::{common::Vec2, node_matrix::NodeMatrix, shape::Shape};
 
-struct PlacedShape {
-    shape: Shape,
+struct ShapePlacement {
     pos: Vec2,
+    shape: Shape,
 }
 
 pub struct Board {
     matrix: NodeMatrix,
-    placements: Vec<PlacedShape>,
+    placements: Vec<ShapePlacement>,
 }
 
 impl Board {
@@ -38,24 +38,38 @@ impl Board {
             self.matrix[pos + n.pos].insert(n.data);
         }
 
-        self.placements.push(PlacedShape {
-            shape: shape.clone(),
+        self.placements.push(ShapePlacement {
             pos,
+            shape: shape.clone(),
         });
     }
 
     pub fn remove_last(&mut self) {
-        let PlacedShape { shape, pos } = self.placements.pop().expect("tried to remove_last() with no pieces");
+        let ShapePlacement { pos, shape } = self.placements.pop().expect("tried to remove_last() with no pieces");
 
         for n in shape.nodes() {
             self.matrix[pos + n.pos].remove(n.data);
         }
     }
+
+    pub fn width(&self) -> u32 {
+        self.matrix.width()
+    }
+
+    pub fn height(&self) -> u32 {
+        self.matrix.height()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        assert_eq!(self.matrix.is_empty(), self.placements.is_empty());
+
+        self.matrix.is_empty()
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{board::Board, common::Vec2, digits};
+    use crate::logic::{board::Board, common::Vec2, digits, shape::Shape};
 
     #[test]
     fn digit0_fits() {
@@ -85,5 +99,38 @@ mod tests {
         b.put_at(&d0, (1, 0).into());
 
         assert!(b.fits_at(&d1, Vec2::new(0, 1)));
+    }
+
+    #[test]
+    fn digits_0_1_4_7_8_fit() {
+        let mut b = Board::new(5, 3);
+
+        let digits: Vec<((u32, u32), Shape)> = vec![
+            ((0, 0), digits::digit0().rotated_ccw().rotated_ccw()),
+            (
+                (0, 0),
+                digits::digit7().flipped_hor().rotated_ccw().rotated_ccw().rotated_ccw(),
+            ),
+            (
+                (1, 1),
+                digits::digit4().flipped_hor().rotated_ccw().rotated_ccw().rotated_ccw(),
+            ),
+            ((1, 0), digits::digit1().rotated_ccw().rotated_ccw().rotated_ccw()),
+            ((3, 0), digits::digit8()),
+        ];
+
+        for (p, d) in &digits {
+            let pos = Vec2::from(*p);
+
+            assert!(b.fits_at(&d, pos));
+            b.put_at(d, pos);
+        }
+
+        for _ in 0..digits.len() {
+            b.remove_last();
+        }
+
+        assert!(b.matrix.is_empty());
+        assert!(b.placements.is_empty());
     }
 }

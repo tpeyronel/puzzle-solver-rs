@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::logic::common::Vec2i;
 
@@ -170,11 +170,37 @@ impl From<Vec<UnnormalizedNode>> for Shape {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ShapeMetadata {
+    pub id: Arc<String>,
+    pub rot: u32,
+    pub flipped: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct ShapeWithMetadata {
+    pub shape: Shape,
+    pub metadata: ShapeMetadata,
+}
+
+impl ShapeWithMetadata {
+    pub fn new(id: String, shape: Shape) -> Self {
+        Self {
+            shape,
+            metadata: ShapeMetadata {
+                id: Arc::new(id),
+                rot: 0,
+                flipped: false,
+            },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::logic::{
         common::{NodeData, Vec2},
-        digits::{digit1, digit1_rot_ccw, digit2, digit5, digit8, digits},
+        digits::{digit1, digit1_rot_ccw, digit2, digit5, digit7, digit7_flipped_hor, digit8, digits},
     };
 
     use super::Shape;
@@ -241,5 +267,6 @@ mod tests {
         assert_eq!(digit2(), digit5().flipped_hor());
         assert_eq!(digit2().flipped_hor(), digit5());
         assert_eq!(digit8().flipped_hor(), digit8());
+        assert_eq!(digit7().flipped_hor(), digit7_flipped_hor());
     }
 }

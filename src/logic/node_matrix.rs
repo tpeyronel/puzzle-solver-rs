@@ -24,6 +24,10 @@ impl NodeMatrix {
         self.height
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.node_data.iter().all(|nd| nd.is_empty())
+    }
+
     fn calc_index(&self, x: u32, y: u32) -> usize {
         (y + x * self.height) as usize
     }

@@ -543,6 +543,45 @@ pub fn digit1_rot_ccw() -> Shape {
     )
 }
 
+#[rustfmt::skip]
+pub fn digit7_flipped_hor() -> Shape {
+    Shape::from(
+        [
+            (
+                (0, 0),
+                vec![
+                    NodeData::EDGE_UP,
+                    NodeData::VERTEX_UP,
+                ],
+            ),
+            (
+                (0, 1),
+                vec![
+                    NodeData::EDGE_UP,
+                    NodeData::VERTEX_UP,
+                    NodeData::VERTEX_LEFT,
+                    NodeData::VERTEX_DOWN,
+                ],
+            ),
+            (
+                (0, 2),
+                vec![
+                    NodeData::EDGE_RIGHT,
+                    NodeData::VERTEX_RIGHT,
+                    NodeData::VERTEX_DOWN,
+                ],
+            ),
+            (
+                (1, 2),
+                vec![
+                    NodeData::VERTEX_LEFT,
+                ],
+            ),
+        ]
+        .as_slice(),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use crate::logic::common::Node;
