@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use super::{
     board::Board,
@@ -7,7 +7,7 @@ use super::{
 };
 
 struct Candidate {
-    id: Arc<String>,
+    id: Rc<String>,
     variations: Vec<ShapeWithMetadata>,
     remaining: u32,
 }

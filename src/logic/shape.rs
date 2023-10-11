@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, rc::Rc};
 
 use crate::logic::common::Vec2i;
 
@@ -172,7 +172,7 @@ impl From<Vec<UnnormalizedNode>> for Shape {
 
 #[derive(Debug, Clone)]
 pub struct ShapeMetadata {
-    pub id: Arc<String>,
+    pub id: Rc<String>,
     pub rot: u32,
     pub flipped: bool,
 }
@@ -188,7 +188,7 @@ impl ShapeWithMetadata {
         Self {
             shape,
             metadata: ShapeMetadata {
-                id: Arc::new(id),
+                id: Rc::new(id),
                 rot: 0,
                 flipped: false,
             },
