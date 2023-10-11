@@ -4,7 +4,7 @@ use super::common::{NodeData, Vec2};
 pub struct NodeMatrix {
     width: u32,
     height: u32,
-    node_data: Box<[NodeData]>,
+    data: Box<[NodeData]>,
 }
 
 impl NodeMatrix {
@@ -12,7 +12,7 @@ impl NodeMatrix {
         Self {
             width,
             height,
-            node_data: vec![NodeData::empty(); (width * height) as usize].into_boxed_slice(),
+            data: vec![NodeData::empty(); (width * height) as usize].into_boxed_slice(),
         }
     }
 
@@ -25,7 +25,7 @@ impl NodeMatrix {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.node_data.iter().all(|nd| nd.is_empty())
+        self.data.iter().all(|nd| nd.is_empty())
     }
 
     fn calc_index(&self, x: u32, y: u32) -> usize {
@@ -37,13 +37,13 @@ impl std::ops::Index<Vec2> for NodeMatrix {
     type Output = NodeData;
 
     fn index(&self, pos: Vec2) -> &Self::Output {
-        return &self.node_data[self.calc_index(pos.x, pos.y)];
+        return &self.data[self.calc_index(pos.x, pos.y)];
     }
 }
 
 impl std::ops::IndexMut<Vec2> for NodeMatrix {
     fn index_mut(&mut self, pos: Vec2) -> &mut Self::Output {
-        return &mut self.node_data[self.calc_index(pos.x, pos.y)];
+        return &mut self.data[self.calc_index(pos.x, pos.y)];
     }
 }
 
@@ -51,12 +51,12 @@ impl std::ops::Index<(u32, u32)> for NodeMatrix {
     type Output = NodeData;
 
     fn index(&self, pos: (u32, u32)) -> &Self::Output {
-        return &self.node_data[self.calc_index(pos.0, pos.1)];
+        return &self.data[self.calc_index(pos.0, pos.1)];
     }
 }
 
 impl std::ops::IndexMut<(u32, u32)> for NodeMatrix {
     fn index_mut(&mut self, pos: (u32, u32)) -> &mut Self::Output {
-        return &mut self.node_data[self.calc_index(pos.0, pos.1)];
+        return &mut self.data[self.calc_index(pos.0, pos.1)];
     }
 }
