@@ -1,4 +1,4 @@
-use super::{common::NodeData, shape::ShapeMesh};
+use super::{node::NodeData, shape::ShapeMesh};
 
 #[rustfmt::skip]
 pub fn digit0() -> ShapeMesh {
@@ -584,7 +584,7 @@ pub fn digit7_flipped_hor() -> ShapeMesh {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::common::Node;
+    use crate::logic::node::Node;
 
     #[test]
     fn digits_are_sorted() {

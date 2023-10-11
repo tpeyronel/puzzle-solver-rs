@@ -2,7 +2,10 @@ use std::{collections::HashMap, rc::Rc};
 
 use crate::logic::common::Vec2i;
 
-use super::common::{Node, NodeData, UnnormalizedNode, Vec2};
+use super::{
+    common::Vec2,
+    node::{Node, NodeData, UnnormalizedNode},
+};
 
 #[derive(Debug, Clone)]
 pub struct ShapeMesh {
@@ -199,8 +202,9 @@ impl Shape {
 #[cfg(test)]
 mod tests {
     use crate::logic::{
-        common::{NodeData, Vec2},
+        common::Vec2,
         digits::{digit1, digit1_rot_ccw, digit2, digit5, digit7, digit7_flipped_hor, digit8, digits},
+        node::NodeData,
     };
 
     use super::ShapeMesh;

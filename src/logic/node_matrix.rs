@@ -1,4 +1,4 @@
-use super::common::{NodeData, Vec2};
+use super::{common::Vec2, node::NodeData};
 
 #[derive(Debug, Clone)]
 pub struct NodeMatrix {
