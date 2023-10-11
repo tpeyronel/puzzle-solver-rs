@@ -60,6 +60,7 @@ impl Board {
         self.matrix.height()
     }
 
+    #[allow(unused)]
     pub fn is_empty(&self) -> bool {
         assert_eq!(self.matrix.is_empty(), self.placements.is_empty());
 

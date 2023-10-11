@@ -24,6 +24,7 @@ impl NodeMatrix {
         self.height
     }
 
+    #[allow(unused)]
     pub fn is_empty(&self) -> bool {
         self.data.iter().all(|nd| nd.is_empty())
     }

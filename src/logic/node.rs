@@ -41,6 +41,7 @@ impl Node {
         nodes.sort_by(Self::node_pos_cmp);
     }
 
+    #[allow(unused)]
     pub fn is_sorted(nodes: &[Node]) -> bool {
         nodes.windows(2).all(|w| Self::node_pos_cmp(&w[0], &w[1]).is_lt())
     }
@@ -70,6 +71,7 @@ impl Node {
         tr
     }
 
+    #[allow(unused)]
     pub fn bb_bottom_left<'a, I>(nodes: I) -> Vec2
     where
         I: IntoIterator<Item = &'a Node>,

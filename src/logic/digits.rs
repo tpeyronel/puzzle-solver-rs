@@ -509,6 +509,7 @@ pub fn digit9() -> ShapeMesh {
     )
 }
 
+#[allow(unused)]
 pub fn digits() -> Vec<ShapeMesh> {
     vec![
         digit0(),
@@ -524,6 +525,7 @@ pub fn digits() -> Vec<ShapeMesh> {
     ]
 }
 
+#[allow(unused)]
 pub fn digit1_rot_ccw() -> ShapeMesh {
     ShapeMesh::from(
         [
