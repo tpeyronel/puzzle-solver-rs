@@ -5,14 +5,12 @@ use crate::logic::common::Vec2i;
 use super::common::{Node, NodeData, UnnormalizedNode, Vec2};
 
 #[derive(Debug, Clone)]
-pub struct Shape {
+pub struct ShapeMesh {
     nodes: Box<[Node]>,
     bb_top_right: Vec2,
 }
 
-pub type RawNode = ((u32, u32), Vec<NodeData>);
-
-impl Shape {
+impl ShapeMesh {
     pub fn new(mut nodes: Vec<Node>) -> Self {
         assert!(!Node::has_empty_node(&nodes));
         Node::align_to_origin(&mut nodes);
@@ -126,7 +124,7 @@ impl Shape {
     }
 }
 
-impl PartialEq for Shape {
+impl PartialEq for ShapeMesh {
     fn eq(&self, other: &Self) -> bool {
         assert_eq!(self.nodes.len(), other.nodes.len());
 
@@ -134,9 +132,11 @@ impl PartialEq for Shape {
     }
 }
 
-impl From<&[RawNode]> for Shape {
-    fn from(raw_nodes: &[RawNode]) -> Self {
-        let nodes: Vec<Node> = raw_nodes
+pub type NodeTuple = ((u32, u32), Vec<NodeData>);
+
+impl From<&[NodeTuple]> for ShapeMesh {
+    fn from(node_tuples: &[NodeTuple]) -> Self {
+        let nodes: Vec<Node> = node_tuples
             .iter()
             .map(|(pos, nds)| Node {
                 data: nds.iter().fold(NodeData::empty(), |acc, &nd| acc | nd),
@@ -148,13 +148,13 @@ impl From<&[RawNode]> for Shape {
     }
 }
 
-impl From<Vec<Node>> for Shape {
+impl From<Vec<Node>> for ShapeMesh {
     fn from(nodes: Vec<Node>) -> Self {
         Self::new(nodes)
     }
 }
 
-impl From<Vec<UnnormalizedNode>> for Shape {
+impl From<Vec<UnnormalizedNode>> for ShapeMesh {
     fn from(unnorm_nodes: Vec<UnnormalizedNode>) -> Self {
         let bottom_left = unnorm_nodes.iter().map(|un| un.pos).fold(Vec2i::MAX, Vec2i::min);
 
@@ -178,15 +178,15 @@ pub struct ShapeMetadata {
 }
 
 #[derive(Debug, Clone)]
-pub struct ShapeWithMetadata {
-    pub shape: Shape,
+pub struct Shape {
+    pub mesh: ShapeMesh,
     pub metadata: ShapeMetadata,
 }
 
-impl ShapeWithMetadata {
-    pub fn new(id: String, shape: Shape) -> Self {
+impl Shape {
+    pub fn new(id: String, mesh: ShapeMesh) -> Self {
         Self {
-            shape,
+            mesh,
             metadata: ShapeMetadata {
                 id: Rc::new(id),
                 rot: 0,
@@ -203,12 +203,12 @@ mod tests {
         digits::{digit1, digit1_rot_ccw, digit2, digit5, digit7, digit7_flipped_hor, digit8, digits},
     };
 
-    use super::Shape;
+    use super::ShapeMesh;
 
     #[test]
     #[should_panic]
     fn new_fails_with_duplicate_nodes() {
-        let _ = Shape::from(
+        let _ = ShapeMesh::from(
             [
                 ((0, 0), vec![NodeData::VERTEX_RIGHT]),
                 ((0, 0), vec![NodeData::EDGE_RIGHT]),
@@ -220,12 +220,12 @@ mod tests {
     #[test]
     #[should_panic]
     fn new_fails_with_empty_nodes() {
-        let _ = Shape::from([((0, 0), vec![NodeData::empty()])].as_slice());
+        let _ = ShapeMesh::from([((0, 0), vec![NodeData::empty()])].as_slice());
     }
 
     #[test]
     fn new_correctly_aligns_to_origin() {
-        let s = Shape::from([((2, 1), vec![NodeData::VERTEX_RIGHT])].as_slice());
+        let s = ShapeMesh::from([((2, 1), vec![NodeData::VERTEX_RIGHT])].as_slice());
 
         assert_eq!(s.nodes.len(), 1);
         assert_eq!(s.nodes[0].pos, Vec2::ZERO);

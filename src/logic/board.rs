@@ -1,13 +1,13 @@
-use super::{common::Vec2, node_matrix::NodeMatrix, shape::Shape};
+use super::{common::Vec2, node_matrix::NodeMatrix, shape::ShapeMesh};
 
-struct ShapePlacement {
+struct ShapeMeshPlacement {
     pos: Vec2,
-    shape: Shape,
+    mesh: ShapeMesh,
 }
 
 pub struct Board {
     matrix: NodeMatrix,
-    placements: Vec<ShapePlacement>,
+    placements: Vec<ShapeMeshPlacement>,
 }
 
 impl Board {
@@ -18,13 +18,13 @@ impl Board {
         }
     }
 
-    pub fn fits_at(&self, shape: &Shape, pos: Vec2) -> bool {
-        let bb_top_right = pos + shape.bb_top_right();
+    pub fn fits_at(&self, mesh: &ShapeMesh, pos: Vec2) -> bool {
+        let bb_top_right = pos + mesh.bb_top_right();
         if bb_top_right.x >= self.matrix.width() || bb_top_right.y >= self.matrix.height() {
             return false;
         }
 
-        for n in shape.nodes() {
+        for n in mesh.nodes() {
             if self.matrix[pos + n.pos].intersects(n.data) {
                 return false;
             }
@@ -33,21 +33,21 @@ impl Board {
         return true;
     }
 
-    pub fn put_at(&mut self, shape: &Shape, pos: Vec2) {
-        for n in shape.nodes() {
+    pub fn put_at(&mut self, mesh: &ShapeMesh, pos: Vec2) {
+        for n in mesh.nodes() {
             self.matrix[pos + n.pos].insert(n.data);
         }
 
-        self.placements.push(ShapePlacement {
+        self.placements.push(ShapeMeshPlacement {
             pos,
-            shape: shape.clone(),
+            mesh: mesh.clone(),
         });
     }
 
     pub fn remove_last(&mut self) {
-        let ShapePlacement { pos, shape } = self.placements.pop().expect("tried to remove_last() with no pieces");
+        let ShapeMeshPlacement { pos, mesh } = self.placements.pop().expect("tried to remove_last() with no pieces");
 
-        for n in shape.nodes() {
+        for n in mesh.nodes() {
             self.matrix[pos + n.pos].remove(n.data);
         }
     }
@@ -69,7 +69,7 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{board::Board, common::Vec2, digits, shape::Shape};
+    use crate::logic::{board::Board, common::Vec2, digits, shape::ShapeMesh};
 
     #[test]
     fn digit0_fits() {
@@ -105,7 +105,7 @@ mod tests {
     fn digits_0_1_4_7_8_fit() {
         let mut b = Board::new(5, 3);
 
-        let digits: Vec<((u32, u32), Shape)> = vec![
+        let digits: Vec<((u32, u32), ShapeMesh)> = vec![
             ((0, 0), digits::digit0().rotated_ccw().rotated_ccw()),
             (
                 (0, 0),

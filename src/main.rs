@@ -1,4 +1,4 @@
-use logic::shape::{Shape, ShapeWithMetadata};
+use logic::shape::{ShapeMesh, Shape};
 
 use crate::logic::{
     digits::{digit0, digit1, digit2, digit3, digit4, digit5, digit6, digit7, digit8, digit9},
@@ -15,11 +15,11 @@ mod logic {
 }
 
 // TODO: with_metadata is duplicated in solver.test.js
-fn with_metadata<I: IntoIterator<Item = (&'static str, Shape)>>(digits: I) -> Vec<ShapeWithMetadata> {
+fn with_metadata<I: IntoIterator<Item = (&'static str, ShapeMesh)>>(digits: I) -> Vec<Shape> {
     digits
         .into_iter()
-        .map(|(id, s)| ShapeWithMetadata::new(id.to_string(), s))
-        .collect::<Vec<ShapeWithMetadata>>()
+        .map(|(id, m)| Shape::new(id.to_string(), m))
+        .collect::<Vec<Shape>>()
 }
 
 fn main() {

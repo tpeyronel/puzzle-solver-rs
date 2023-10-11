@@ -3,12 +3,12 @@ use std::rc::Rc;
 use super::{
     board::Board,
     common::Vec2,
-    shape::{ShapeMetadata, ShapeWithMetadata},
+    shape::{ShapeMetadata, Shape},
 };
 
 struct Candidate {
     id: Rc<String>,
-    variations: Vec<ShapeWithMetadata>,
+    variations: Vec<Shape>,
     remaining: u32,
 }
 
@@ -32,7 +32,7 @@ impl Solver {
         }
     }
 
-    pub fn solve(&mut self, shapes: Vec<ShapeWithMetadata>) -> Option<Solution> {
+    pub fn solve(&mut self, shapes: Vec<Shape>) -> Option<Solution> {
         let mut candidates = Self::to_candidates(shapes);
 
         self.total_remaining = candidates.iter().map(|c| c.remaining).sum();
@@ -67,9 +67,9 @@ impl Solver {
             for j in 0..candidates[i].variations.len() {
                 let v = &candidates[i].variations[j];
 
-                if self.board.fits_at(&v.shape, pos) {
+                if self.board.fits_at(&v.mesh, pos) {
                     self.solution.placed_shapes.push((pos, v.metadata.clone()));
-                    self.board.put_at(&v.shape, pos);
+                    self.board.put_at(&v.mesh, pos);
 
                     if self.solve_rec(candidates, pos) {
                         return true;
@@ -93,7 +93,7 @@ impl Solver {
         return self.solve_rec(candidates, next_pos);
     }
 
-    fn to_candidates(shapes: Vec<ShapeWithMetadata>) -> Vec<Candidate> {
+    fn to_candidates(shapes: Vec<Shape>) -> Vec<Candidate> {
         shapes
             .iter()
             .map(|s| Candidate {
@@ -104,33 +104,33 @@ impl Solver {
             .collect()
     }
 
-    fn compute_variations(shape: &ShapeWithMetadata) -> Vec<ShapeWithMetadata> {
+    fn compute_variations(shape: &Shape) -> Vec<Shape> {
         let mut variations = vec![];
 
-        let mut s = shape.shape.clone();
+        let mut m = shape.mesh.clone();
         for i in 0..4 {
-            variations.push(ShapeWithMetadata {
-                shape: s.clone(),
+            variations.push(Shape {
+                mesh: m.clone(),
                 metadata: ShapeMetadata {
                     id: shape.metadata.id.clone(),
                     rot: (shape.metadata.rot + i) % 4,
                     flipped: shape.metadata.flipped,
                 },
             });
-            s = s.rotated_ccw();
+            m = m.rotated_ccw();
         }
 
-        let mut s = shape.shape.flipped_hor();
+        let mut m = shape.mesh.flipped_hor();
         for i in 0..4 {
-            variations.push(ShapeWithMetadata {
-                shape: s.clone(),
+            variations.push(Shape {
+                mesh: m.clone(),
                 metadata: ShapeMetadata {
                     id: shape.metadata.id.clone(),
                     rot: (shape.metadata.rot + i) % 4,
                     flipped: !shape.metadata.flipped,
                 },
             });
-            s = s.rotated_ccw();
+            m = m.rotated_ccw();
         }
 
         variations
@@ -141,16 +141,16 @@ impl Solver {
 mod tests {
     use crate::logic::{
         digits::{digit0, digit1, digit2, digit3, digit4, digit5, digit6, digit7, digit8, digit9},
-        shape::{Shape, ShapeWithMetadata},
+        shape::{ShapeMesh, Shape},
     };
 
     use super::Solver;
 
-    fn with_metadata<I: IntoIterator<Item = (&'static str, Shape)>>(digits: I) -> Vec<ShapeWithMetadata> {
+    fn with_metadata<I: IntoIterator<Item = (&'static str, ShapeMesh)>>(digits: I) -> Vec<Shape> {
         digits
             .into_iter()
-            .map(|(id, s)| ShapeWithMetadata::new(id.to_string(), s))
-            .collect::<Vec<ShapeWithMetadata>>()
+            .map(|(id, m)| Shape::new(id.to_string(), m))
+            .collect::<Vec<Shape>>()
     }
 
     #[test]
