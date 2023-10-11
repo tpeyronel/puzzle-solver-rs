@@ -7,7 +7,7 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct ShapeMesh {
-    nodes: Box<[Node]>,
+    nodes: Box<[Node]>, // TODO: fix unnecessary cloning
     bb_top_right: Vec2,
 }
 
