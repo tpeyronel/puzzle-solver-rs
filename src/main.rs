@@ -1,4 +1,4 @@
-use logic::shape::{Shape, ShapeMesh};
+use logic::{shape::Shape, shape_mesh::ShapeMesh};
 
 use crate::logic::{
     digits::{digit0, digit1, digit2, digit3, digit4, digit5, digit6, digit7, digit8, digit9},
@@ -12,6 +12,7 @@ mod logic {
     pub mod node;
     pub mod node_matrix;
     pub mod shape;
+    pub mod shape_mesh;
     pub mod solver;
 }
 

@@ -1,4 +1,4 @@
-use super::{common::Vec2, node_matrix::NodeMatrix, shape::ShapeMesh};
+use super::{common::Vec2, node_matrix::NodeMatrix, shape_mesh::ShapeMesh};
 
 struct ShapeMeshPlacement {
     pos: Vec2,
@@ -69,7 +69,7 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{board::Board, common::Vec2, digits, shape::ShapeMesh};
+    use crate::logic::{board::Board, common::Vec2, digits, shape_mesh::ShapeMesh};
 
     #[test]
     fn digit0_fits() {

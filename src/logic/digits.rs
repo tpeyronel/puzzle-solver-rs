@@ -1,4 +1,4 @@
-use super::{node::NodeData, shape::ShapeMesh};
+use super::{node::NodeData, shape_mesh::ShapeMesh};
 
 #[rustfmt::skip]
 pub fn digit0() -> ShapeMesh {

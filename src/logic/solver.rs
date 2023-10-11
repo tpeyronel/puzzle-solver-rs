@@ -141,7 +141,8 @@ impl Solver {
 mod tests {
     use crate::logic::{
         digits::{digit0, digit1, digit2, digit3, digit4, digit5, digit6, digit7, digit8, digit9},
-        shape::{Shape, ShapeMesh},
+        shape::Shape,
+        shape_mesh::ShapeMesh,
     };
 
     use super::Solver;
