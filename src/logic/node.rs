@@ -29,10 +29,6 @@ pub struct Node {
 }
 
 impl Node {
-    fn node_pos_cmp(a: &Node, b: &Node) -> std::cmp::Ordering {
-        a.pos.x.cmp(&b.pos.x).then_with(|| a.pos.y.cmp(&b.pos.y))
-    }
-
     pub fn align_to_origin(nodes: &mut [Node]) {
         let bottom_left = nodes.iter().map(|n: &Node| n.pos).fold(Vec2::MAX, Vec2::min);
 
@@ -90,5 +86,9 @@ impl Node {
         }
 
         bl
+    }
+
+    fn node_pos_cmp(a: &Node, b: &Node) -> std::cmp::Ordering {
+        a.pos.x.cmp(&b.pos.x).then_with(|| a.pos.y.cmp(&b.pos.y))
     }
 }
