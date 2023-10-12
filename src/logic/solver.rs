@@ -105,33 +105,18 @@ impl Solver {
     }
 
     fn compute_variations(shape: &Shape) -> Vec<Rc<Shape>> {
+        fn push_rotations(mut shape: Shape, variations: &mut Vec<Rc<Shape>>) {
+            for _ in 0..4 {
+                let next = shape.rotated_ccw();
+                variations.push(Rc::new(shape));
+                shape = next;
+            }
+        }
+
         let mut variations = vec![];
 
-        let mut m = shape.mesh().clone();
-        for i in 0..4 {
-            variations.push(Rc::new(Shape::from_metadata(
-                m.clone(),
-                ShapeMetadata {
-                    id: shape.metadata().id.clone(),
-                    rot: (shape.metadata().rot + i) % 4,
-                    flipped: shape.metadata().flipped,
-                },
-            )));
-            m = m.rotated_ccw();
-        }
-
-        let mut m = shape.mesh().flipped_hor();
-        for i in 0..4 {
-            variations.push(Rc::new(Shape::from_metadata(
-                m.clone(),
-                ShapeMetadata {
-                    id: shape.metadata().id.clone(),
-                    rot: (shape.metadata().rot + i) % 4,
-                    flipped: shape.metadata().flipped,
-                },
-            )));
-            m = m.rotated_ccw();
-        }
+        push_rotations(shape.clone(), &mut variations);
+        push_rotations(shape.flipped_hor(), &mut variations);
 
         variations
     }

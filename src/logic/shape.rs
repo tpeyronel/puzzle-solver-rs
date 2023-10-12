@@ -27,9 +27,26 @@ impl Shape {
         }
     }
 
-    // TODO: replace with rotated_ccw(), etc.
-    pub fn from_metadata(mesh: ShapeMesh, metadata: ShapeMetadata) -> Self {
-        Self { mesh, metadata }
+    pub fn rotated_ccw(&self) -> Self {
+        Self {
+            mesh: self.mesh.rotated_ccw(),
+            metadata: ShapeMetadata {
+                id: self.metadata.id.clone(),
+                rot: (self.metadata.rot + 1) % 4,
+                flipped: self.metadata.flipped,
+            },
+        }
+    }
+
+    pub fn flipped_hor(&self) -> Self {
+        Self {
+            mesh: self.mesh.flipped_hor(),
+            metadata: ShapeMetadata {
+                id: self.metadata.id.clone(),
+                rot: self.metadata.rot,
+                flipped: !self.metadata.flipped,
+            },
+        }
     }
 
     pub fn mesh(&self) -> &ShapeMesh {
