@@ -11,8 +11,8 @@ pub struct ShapeMetadata {
 
 #[derive(Debug, Clone)]
 pub struct Shape {
-    pub mesh: ShapeMesh,
-    pub metadata: ShapeMetadata,
+    mesh: ShapeMesh,
+    metadata: ShapeMetadata,
 }
 
 impl Shape {
@@ -25,5 +25,18 @@ impl Shape {
                 flipped: false,
             },
         }
+    }
+
+    // TODO: replace with rotated_ccw(), etc.
+    pub fn from_metadata(mesh: ShapeMesh, metadata: ShapeMetadata) -> Self {
+        Self { mesh, metadata }
+    }
+
+    pub fn mesh(&self) -> &ShapeMesh {
+        &self.mesh
+    }
+
+    pub fn metadata(&self) -> &ShapeMetadata {
+        &self.metadata
     }
 }

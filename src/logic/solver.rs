@@ -67,9 +67,9 @@ impl Solver {
             for j in 0..candidates[i].variations.len() {
                 let v = &candidates[i].variations[j];
 
-                if self.board.fits_at(&v.mesh, pos) {
-                    self.solution.placed_shapes.push((pos, v.metadata.clone()));
-                    self.board.put_at(&v.mesh, pos);
+                if self.board.fits_at(&v.mesh(), pos) {
+                    self.solution.placed_shapes.push((pos, v.metadata().clone()));
+                    self.board.put_at(&v.mesh(), pos);
 
                     if self.solve_rec(candidates, pos) {
                         return true;
@@ -97,7 +97,7 @@ impl Solver {
         shapes
             .iter()
             .map(|s| Candidate {
-                id: s.metadata.id.clone(),
+                id: s.metadata().id.clone(),
                 variations: Self::compute_variations(s),
                 remaining: 1,
             })
@@ -107,29 +107,29 @@ impl Solver {
     fn compute_variations(shape: &Shape) -> Vec<Rc<Shape>> {
         let mut variations = vec![];
 
-        let mut m = shape.mesh.clone();
+        let mut m = shape.mesh().clone();
         for i in 0..4 {
-            variations.push(Rc::new(Shape {
-                mesh: m.clone(),
-                metadata: ShapeMetadata {
-                    id: shape.metadata.id.clone(),
-                    rot: (shape.metadata.rot + i) % 4,
-                    flipped: shape.metadata.flipped,
+            variations.push(Rc::new(Shape::from_metadata(
+                m.clone(),
+                ShapeMetadata {
+                    id: shape.metadata().id.clone(),
+                    rot: (shape.metadata().rot + i) % 4,
+                    flipped: shape.metadata().flipped,
                 },
-            }));
+            )));
             m = m.rotated_ccw();
         }
 
-        let mut m = shape.mesh.flipped_hor();
+        let mut m = shape.mesh().flipped_hor();
         for i in 0..4 {
-            variations.push(Rc::new(Shape {
-                mesh: m.clone(),
-                metadata: ShapeMetadata {
-                    id: shape.metadata.id.clone(),
-                    rot: (shape.metadata.rot + i) % 4,
-                    flipped: !shape.metadata.flipped,
+            variations.push(Rc::new(Shape::from_metadata(
+                m.clone(),
+                ShapeMetadata {
+                    id: shape.metadata().id.clone(),
+                    rot: (shape.metadata().rot + i) % 4,
+                    flipped: shape.metadata().flipped,
                 },
-            }));
+            )));
             m = m.rotated_ccw();
         }
 
