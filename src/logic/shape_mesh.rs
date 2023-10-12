@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use super::{
     common::{Vec2, Vec2i},
@@ -7,7 +7,7 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct ShapeMesh {
-    nodes: Box<[Node]>,
+    nodes: Rc<[Node]>,
     bb_top_right: Vec2,
 }
 
@@ -21,7 +21,7 @@ impl ShapeMesh {
         let bb_top_right = Node::bb_top_right(&nodes);
 
         Self {
-            nodes: nodes.into_boxed_slice(),
+            nodes: nodes.into_boxed_slice().into(),
             bb_top_right,
         }
     }
