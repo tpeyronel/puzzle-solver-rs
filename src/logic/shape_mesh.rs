@@ -213,7 +213,7 @@ mod tests {
         let digit1 = digit1();
         let digit1_rot_ccw = digit1_rot_ccw();
 
-        assert_eq!(digit1.rotated_ccw(), digit1_rot_ccw);
+        assert_eq!(digit1.rotated_ccw().mesh(), digit1_rot_ccw.mesh());
     }
 
     #[test]
@@ -223,7 +223,7 @@ mod tests {
         for d in digits {
             let d_rot = d.rotated_ccw().rotated_ccw().rotated_ccw().rotated_ccw();
 
-            assert_eq!(d, d_rot);
+            assert_eq!(d.mesh(), d_rot.mesh());
         }
     }
 
@@ -234,15 +234,15 @@ mod tests {
         for d in digits {
             let d_flipped = d.flipped_hor().flipped_hor();
 
-            assert_eq!(d, d_flipped);
+            assert_eq!(d.mesh(), d_flipped.mesh());
         }
     }
 
     #[test]
     fn flipped_hor_works() {
-        assert_eq!(digit2(), digit5().flipped_hor());
-        assert_eq!(digit2().flipped_hor(), digit5());
-        assert_eq!(digit8().flipped_hor(), digit8());
-        assert_eq!(digit7().flipped_hor(), digit7_flipped_hor());
+        assert_eq!(digit2().mesh(), digit5().flipped_hor().mesh());
+        assert_eq!(digit2().flipped_hor().mesh(), digit5().mesh());
+        assert_eq!(digit8().flipped_hor().mesh(), digit8().mesh());
+        assert_eq!(digit7().flipped_hor().mesh(), digit7_flipped_hor().mesh());
     }
 }

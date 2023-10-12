@@ -124,24 +124,13 @@ impl Solver {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{
-        digits::{digit0, digit1, digit2, digit3, digit4, digit5, digit6, digit7, digit8, digit9},
-        shape::Shape,
-        shape_mesh::ShapeMesh,
-    };
+    use crate::logic::digits::{digit0, digit1, digit2, digit3, digit4, digit5, digit6, digit7, digit8, digit9};
 
     use super::Solver;
 
-    fn with_metadata<I: IntoIterator<Item = (&'static str, ShapeMesh)>>(digits: I) -> Vec<Shape> {
-        digits
-            .into_iter()
-            .map(|(id, m)| Shape::new(id.to_string(), m))
-            .collect::<Vec<Shape>>()
-    }
-
     #[test]
     fn solve_works_for_digits_8() {
-        let digits = with_metadata([("8", digit8())]);
+        let digits = vec![digit8()];
 
         let mut solver = Solver::new(2, 3);
 
@@ -152,7 +141,7 @@ mod tests {
 
     #[test]
     fn solve_works_for_digits_3_8() {
-        let digits = with_metadata([("3", digit3()), ("8", digit8())]);
+        let digits = vec![digit3(), digit8()];
 
         let mut solver = Solver::new(3, 3);
 
@@ -163,7 +152,7 @@ mod tests {
 
     #[test]
     fn solve_works_for_digits_0_1_7() {
-        let digits = with_metadata([("0", digit0()), ("1", digit1()), ("7", digit7())]);
+        let digits = vec![digit0(), digit1(), digit7()];
 
         let mut solver = Solver::new(3, 3);
 
@@ -174,7 +163,7 @@ mod tests {
 
     #[test]
     fn solve_works_for_digits_6_9() {
-        let digits = with_metadata([("9", digit9()), ("6", digit6())]);
+        let digits = vec![digit9(), digit6()];
 
         let mut solver = Solver::new(3, 3);
 
@@ -185,7 +174,7 @@ mod tests {
 
     #[test]
     fn solve_works_for_digits_3_6_9() {
-        let digits = with_metadata([("3", digit3()), ("9", digit9()), ("6", digit6())]);
+        let digits = vec![digit3(), digit9(), digit6()];
 
         let mut solver = Solver::new(3, 4);
 
@@ -196,13 +185,7 @@ mod tests {
 
     #[test]
     fn solve_works_for_digits_0_1_4_7_8() {
-        let digits = with_metadata([
-            ("0", digit0()),
-            ("1", digit1()),
-            ("4", digit4()),
-            ("7", digit7()),
-            ("8", digit8()),
-        ]);
+        let digits = vec![digit0(), digit1(), digit4(), digit7(), digit8()];
 
         let mut solver = Solver::new(5, 3);
 
@@ -213,18 +196,18 @@ mod tests {
 
     #[test]
     fn solve_works_for_all_digits() {
-        let digits = with_metadata([
-            ("0", digit0()),
-            ("1", digit1()),
-            ("2", digit2()),
-            ("3", digit3()),
-            ("4", digit4()),
-            ("5", digit5()),
-            ("6", digit6()),
-            ("7", digit7()),
-            ("8", digit8()),
-            ("9", digit9()),
-        ]);
+        let digits = vec![
+            digit0(),
+            digit1(),
+            digit2(),
+            digit3(),
+            digit4(),
+            digit5(),
+            digit6(),
+            digit7(),
+            digit8(),
+            digit9(),
+        ];
 
         let mut solver = Solver::new(6, 5);
 

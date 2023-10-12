@@ -16,11 +16,11 @@ pub struct Shape {
 }
 
 impl Shape {
-    pub fn new(id: String, mesh: ShapeMesh) -> Self {
+    pub fn new(id: impl Into<String>, mesh: ShapeMesh) -> Self {
         Self {
             mesh,
             metadata: ShapeMetadata {
-                id: Rc::new(id),
+                id: Rc::new(id.into()),
                 rot: 0,
                 flipped: false,
             },

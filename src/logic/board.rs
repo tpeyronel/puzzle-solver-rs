@@ -70,15 +70,15 @@ impl Board {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::{board::Board, common::Vec2, digits, shape_mesh::ShapeMesh};
+    use crate::logic::{board::Board, common::Vec2, digits, shape::Shape};
 
     #[test]
     fn digit0_fits() {
         let b = Board::new(2, 3);
         let d0 = digits::digit0();
 
-        assert!(b.fits_at(&d0, Vec2::new(0, 0)));
-        assert!(!b.fits_at(&d0, Vec2::new(1, 0)));
+        assert!(b.fits_at(d0.mesh(), Vec2::new(0, 0)));
+        assert!(!b.fits_at(d0.mesh(), Vec2::new(1, 0)));
     }
 
     #[test]
@@ -86,8 +86,8 @@ mod tests {
         let b = Board::new(1, 3);
         let d1 = digits::digit1();
 
-        assert!(b.fits_at(&d1, Vec2::new(0, 0)));
-        assert!(!b.fits_at(&d1, Vec2::new(1, 0)));
+        assert!(b.fits_at(d1.mesh(), Vec2::new(0, 0)));
+        assert!(!b.fits_at(d1.mesh(), Vec2::new(1, 0)));
     }
 
     #[test]
@@ -96,17 +96,17 @@ mod tests {
         let d0 = digits::digit0();
         let d1 = digits::digit1().rotated_ccw().rotated_ccw().rotated_ccw();
 
-        assert!(b.fits_at(&d0, Vec2::new(1, 0)));
-        b.put_at(&d0, (1, 0).into());
+        assert!(b.fits_at(d0.mesh(), Vec2::new(1, 0)));
+        b.put_at(d0.mesh(), (1, 0).into());
 
-        assert!(b.fits_at(&d1, Vec2::new(0, 1)));
+        assert!(b.fits_at(d1.mesh(), Vec2::new(0, 1)));
     }
 
     #[test]
     fn digits_0_1_4_7_8_fit() {
         let mut b = Board::new(5, 3);
 
-        let digits: Vec<((u32, u32), ShapeMesh)> = vec![
+        let digits: Vec<((u32, u32), Shape)> = vec![
             ((0, 0), digits::digit0().rotated_ccw().rotated_ccw()),
             (
                 (0, 0),
@@ -123,8 +123,8 @@ mod tests {
         for (p, d) in &digits {
             let pos = Vec2::from(*p);
 
-            assert!(b.fits_at(&d, pos));
-            b.put_at(d, pos);
+            assert!(b.fits_at(d.mesh(), pos));
+            b.put_at(d.mesh(), pos);
         }
 
         for _ in 0..digits.len() {

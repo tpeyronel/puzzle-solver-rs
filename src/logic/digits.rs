@@ -1,8 +1,9 @@
-use super::{node::NodeData, shape_mesh::ShapeMesh};
+use super::{node::NodeData, shape::Shape};
 
 #[rustfmt::skip]
-pub fn digit0() -> ShapeMesh {
-    ShapeMesh::from(
+pub fn digit0() -> Shape {
+    Shape::new(
+        "0",
         [
             (
                 (0, 0),
@@ -52,14 +53,14 @@ pub fn digit0() -> ShapeMesh {
                     NodeData::VERTEX_DOWN,
                 ],
             ),
-        ]
-        .as_slice(),
+        ].as_slice().into(),
     )
 }
 
 #[rustfmt::skip]
-pub fn digit1() -> ShapeMesh {
-    ShapeMesh::from(
+pub fn digit1() -> Shape {
+    Shape::new(
+        "1",
         [
             (
                 (0, 0),
@@ -84,13 +85,14 @@ pub fn digit1() -> ShapeMesh {
                 ],
             ),
         ]
-        .as_slice(),
+        .as_slice().into(),
     )
 }
 
 #[rustfmt::skip]
-pub fn digit2() -> ShapeMesh {
-    ShapeMesh::from(
+pub fn digit2() -> Shape {
+    Shape::new(
+        "2",
         [
             (
                 (0, 0),
@@ -138,13 +140,14 @@ pub fn digit2() -> ShapeMesh {
                 ],
             ),
         ]
-        .as_slice(),
+        .as_slice().into(),
     )
 }
 
 #[rustfmt::skip]
-pub fn digit3() -> ShapeMesh {
-    ShapeMesh::from(
+pub fn digit3() -> Shape {
+    Shape::new(
+        "3",
         [
             (
                 (0, 0),
@@ -192,13 +195,14 @@ pub fn digit3() -> ShapeMesh {
                 ],
             ),
         ]
-        .as_slice(),
+        .as_slice().into(),
     )
 }
 
 #[rustfmt::skip]
-pub fn digit4() -> ShapeMesh {
-    ShapeMesh::from(
+pub fn digit4() -> Shape {
+    Shape::new(
+        "4",
         [
             (
                 (0, 1),
@@ -238,13 +242,14 @@ pub fn digit4() -> ShapeMesh {
                 ],
             ),
         ]
-        .as_slice(),
+        .as_slice().into(),
     )
 }
 
 #[rustfmt::skip]
-pub fn digit5() -> ShapeMesh {
-    ShapeMesh::from(
+pub fn digit5() -> Shape {
+    Shape::new(
+        "5",
         [
             (
                 (0, 0),
@@ -292,109 +297,14 @@ pub fn digit5() -> ShapeMesh {
                 ],
             ),
         ]
-        .as_slice(),
+        .as_slice().into(),
     )
 }
 
 #[rustfmt::skip]
-pub fn digit6() -> ShapeMesh {
-    ShapeMesh::from(
-        [
-            (
-                (0, 0),
-                vec![
-                    NodeData::EDGE_RIGHT,
-                    NodeData::EDGE_UP,
-                    NodeData::VERTEX_RIGHT,
-                    NodeData::VERTEX_UP,
-                ],
-            ),
-            (
-                (0, 1),
-                vec![
-                    NodeData::EDGE_RIGHT,
-                    NodeData::EDGE_UP,
-                    NodeData::VERTEX_RIGHT,
-                    NodeData::VERTEX_UP,
-                    NodeData::VERTEX_DOWN,
-                ],
-            ),
-            (
-                (0, 2),
-                vec![
-                    NodeData::EDGE_RIGHT,
-                    NodeData::VERTEX_RIGHT,
-                    NodeData::VERTEX_DOWN,
-                ],
-            ),
-            (
-                (1, 0),
-                vec![
-                    NodeData::EDGE_UP,
-                    NodeData::VERTEX_UP,
-                    NodeData::VERTEX_LEFT,
-                ],
-            ),
-            (
-                (1, 1),
-                vec![
-                    NodeData::VERTEX_LEFT,
-                    NodeData::VERTEX_DOWN,
-                ],
-            ),
-            (
-                (1, 2),
-                vec![
-                    NodeData::VERTEX_LEFT,
-                ],
-            ),
-        ]
-        .as_slice(),
-    )
-}
-
-#[rustfmt::skip]
-pub fn digit7() -> ShapeMesh {
-    ShapeMesh::from(
-        [
-            (
-                (0, 2),
-                vec![
-                    NodeData::EDGE_RIGHT,
-                    NodeData::VERTEX_RIGHT,
-                ],
-            ),
-            (
-                (1, 0),
-                vec![
-                    NodeData::EDGE_UP,
-                    NodeData::VERTEX_UP,
-                ],
-            ),
-            (
-                (1, 1),
-                vec![
-                    NodeData::EDGE_UP,
-                    NodeData::VERTEX_UP,
-                    NodeData::VERTEX_RIGHT,
-                    NodeData::VERTEX_DOWN,
-                ],
-            ),
-            (
-                (1, 2),
-                vec![
-                    NodeData::VERTEX_LEFT,
-                    NodeData::VERTEX_DOWN,
-                ],
-            ),
-        ]
-        .as_slice(),
-    )
-}
-
-#[rustfmt::skip]
-pub fn digit8() -> ShapeMesh {
-    ShapeMesh::from(
+pub fn digit6() -> Shape {
+    Shape::new(
+        "6",
         [
             (
                 (0, 0),
@@ -434,6 +344,104 @@ pub fn digit8() -> ShapeMesh {
             (
                 (1, 1),
                 vec![
+                    NodeData::VERTEX_LEFT,
+                    NodeData::VERTEX_DOWN,
+                ],
+            ),
+            (
+                (1, 2),
+                vec![
+                    NodeData::VERTEX_LEFT,
+                ],
+            ),
+        ]
+        .as_slice().into(),
+    )
+}
+
+#[rustfmt::skip]
+pub fn digit7() -> Shape {
+    Shape::new(
+        "7",
+        [
+            (
+                (0, 2),
+                vec![
+                    NodeData::EDGE_RIGHT,
+                    NodeData::VERTEX_RIGHT,
+                ],
+            ),
+            (
+                (1, 0),
+                vec![
+                    NodeData::EDGE_UP,
+                    NodeData::VERTEX_UP,
+                ],
+            ),
+            (
+                (1, 1),
+                vec![
+                    NodeData::EDGE_UP,
+                    NodeData::VERTEX_UP,
+                    NodeData::VERTEX_RIGHT,
+                    NodeData::VERTEX_DOWN,
+                ],
+            ),
+            (
+                (1, 2),
+                vec![
+                    NodeData::VERTEX_LEFT,
+                    NodeData::VERTEX_DOWN,
+                ],
+            ),
+        ]
+        .as_slice().into(),
+    )
+}
+
+#[rustfmt::skip]
+pub fn digit8() -> Shape {
+    Shape::new(
+        "8",
+        [
+            (
+                (0, 0),
+                vec![
+                    NodeData::EDGE_RIGHT,
+                    NodeData::EDGE_UP,
+                    NodeData::VERTEX_RIGHT,
+                    NodeData::VERTEX_UP,
+                ],
+            ),
+            (
+                (0, 1),
+                vec![
+                    NodeData::EDGE_RIGHT,
+                    NodeData::EDGE_UP,
+                    NodeData::VERTEX_RIGHT,
+                    NodeData::VERTEX_UP,
+                    NodeData::VERTEX_DOWN,
+                ],
+            ),
+            (
+                (0, 2),
+                vec![
+                    NodeData::EDGE_RIGHT,
+                    NodeData::VERTEX_RIGHT,
+                    NodeData::VERTEX_DOWN,
+                ],
+            ),
+            (
+                (1, 0),
+                vec![
+                    NodeData::EDGE_UP,
+                    NodeData::VERTEX_UP,
+                    NodeData::VERTEX_LEFT,
+                ],
+            ),
+            (
+                (1, 1),
+                vec![
                     NodeData::EDGE_UP,
                     NodeData::VERTEX_UP,
                     NodeData::VERTEX_LEFT,
@@ -448,13 +456,14 @@ pub fn digit8() -> ShapeMesh {
                 ],
             ),
         ]
-        .as_slice(),
+        .as_slice().into(),
     )
 }
 
 #[rustfmt::skip]
-pub fn digit9() -> ShapeMesh {
-    ShapeMesh::from(
+pub fn digit9() -> Shape {
+    Shape::new(
+        "9",
         [
             (
                 (0, 0),
@@ -505,12 +514,12 @@ pub fn digit9() -> ShapeMesh {
                 ],
             ),
         ]
-        .as_slice(),
+        .as_slice().into(),
     )
 }
 
 #[allow(unused)]
-pub fn digits() -> Vec<ShapeMesh> {
+pub fn digits() -> Vec<Shape> {
     vec![
         digit0(),
         digit1(),
@@ -526,8 +535,9 @@ pub fn digits() -> Vec<ShapeMesh> {
 }
 
 #[allow(unused)]
-pub fn digit1_rot_ccw() -> ShapeMesh {
-    ShapeMesh::from(
+pub fn digit1_rot_ccw() -> Shape {
+    Shape::new(
+        "1r",
         [
             ((0, 0), vec![NodeData::EDGE_RIGHT, NodeData::VERTEX_RIGHT]),
             (
@@ -541,13 +551,15 @@ pub fn digit1_rot_ccw() -> ShapeMesh {
             ),
             ((2, 0), vec![NodeData::VERTEX_LEFT]),
         ]
-        .as_slice(),
+        .as_slice()
+        .into(),
     )
 }
 
 #[rustfmt::skip]
-pub fn digit7_flipped_hor() -> ShapeMesh {
-    ShapeMesh::from(
+pub fn digit7_flipped_hor() -> Shape {
+    Shape::new(
+        "7f",
         [
             (
                 (0, 0),
@@ -580,7 +592,7 @@ pub fn digit7_flipped_hor() -> ShapeMesh {
                 ],
             ),
         ]
-        .as_slice(),
+        .as_slice().into(),
     )
 }
 
@@ -593,7 +605,7 @@ mod tests {
         let digits = super::digits();
 
         for d in digits {
-            assert!(Node::is_sorted(d.nodes()));
+            assert!(Node::is_sorted(d.mesh().nodes()));
         }
     }
 
@@ -602,7 +614,7 @@ mod tests {
         let d6 = super::digit6();
         let d9 = super::digit9();
 
-        assert_eq!(d6.rotated_ccw().rotated_ccw(), d9);
-        assert_eq!(d9.rotated_ccw().rotated_ccw(), d6);
+        assert_eq!(d6.rotated_ccw().rotated_ccw().mesh(), d9.mesh());
+        assert_eq!(d9.rotated_ccw().rotated_ccw().mesh(), d6.mesh());
     }
 }
