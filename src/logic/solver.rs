@@ -1,10 +1,6 @@
 use std::rc::Rc;
 
-use super::{
-    board::Board,
-    common::Vec2,
-    shape::{Shape, ShapeMetadata},
-};
+use super::{board::Board, common::Vec2, shape::Shape};
 
 struct Candidate {
     id: Rc<String>,
@@ -14,7 +10,7 @@ struct Candidate {
 
 #[derive(Debug, Clone)]
 pub struct Solution {
-    placed_shapes: Vec<(Vec2, ShapeMetadata)>,
+    placed_shapes: Vec<(Vec2, Rc<Shape>)>,
 }
 
 pub struct Solver {
@@ -68,7 +64,7 @@ impl Solver {
                 let v = &candidates[i].variations[j];
 
                 if self.board.fits_at(v.mesh(), pos) {
-                    self.solution.placed_shapes.push((pos, v.metadata().clone()));
+                    self.solution.placed_shapes.push((pos, v.clone()));
                     self.board.insert_at(v.mesh(), pos);
 
                     if self.solve_rec(candidates, pos) {
