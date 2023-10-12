@@ -1,20 +1,13 @@
 use super::{common::Vec2, node_matrix::NodeMatrix, shape_mesh::ShapeMesh};
 
-struct ShapeMeshPlacement {
-    pos: Vec2,
-    mesh: ShapeMesh,
-}
-
 pub struct Board {
     matrix: NodeMatrix,
-    placements: Vec<ShapeMeshPlacement>,
 }
 
 impl Board {
     pub fn new(width: u32, height: u32) -> Self {
         Self {
             matrix: NodeMatrix::new(width, height),
-            placements: vec![],
         }
     }
 
@@ -33,20 +26,13 @@ impl Board {
         return true;
     }
 
-    pub fn put_at(&mut self, mesh: &ShapeMesh, pos: Vec2) {
+    pub fn insert_at(&mut self, mesh: &ShapeMesh, pos: Vec2) {
         for n in mesh.nodes() {
             self.matrix[pos + n.pos].insert(n.data);
         }
-
-        self.placements.push(ShapeMeshPlacement {
-            pos,
-            mesh: mesh.clone(),
-        });
     }
 
-    pub fn remove_last(&mut self) {
-        let ShapeMeshPlacement { pos, mesh } = self.placements.pop().expect("tried to remove_last() with no pieces");
-
+    pub fn remove_at(&mut self, mesh: &ShapeMesh, pos: Vec2) {
         for n in mesh.nodes() {
             self.matrix[pos + n.pos].remove(n.data);
         }
@@ -62,8 +48,6 @@ impl Board {
 
     #[allow(unused)]
     pub fn is_empty(&self) -> bool {
-        assert_eq!(self.matrix.is_empty(), self.placements.is_empty());
-
         self.matrix.is_empty()
     }
 }
@@ -97,7 +81,7 @@ mod tests {
         let d1 = digits::digit1().rotated_ccw().rotated_ccw().rotated_ccw();
 
         assert!(b.fits_at(d0.mesh(), Vec2::new(1, 0)));
-        b.put_at(d0.mesh(), (1, 0).into());
+        b.insert_at(d0.mesh(), (1, 0).into());
 
         assert!(b.fits_at(d1.mesh(), Vec2::new(0, 1)));
     }
@@ -106,7 +90,7 @@ mod tests {
     fn digits_0_1_4_7_8_fit() {
         let mut b = Board::new(5, 3);
 
-        let digits: Vec<((u32, u32), Shape)> = vec![
+        let digits: Vec<(Vec2, Shape)> = vec![
             ((0, 0), digits::digit0().rotated_ccw().rotated_ccw()),
             (
                 (0, 0),
@@ -118,20 +102,20 @@ mod tests {
             ),
             ((1, 0), digits::digit1().rotated_ccw().rotated_ccw().rotated_ccw()),
             ((3, 0), digits::digit8()),
-        ];
+        ]
+        .into_iter()
+        .map(|(p, s)| (Vec2::from(p), s))
+        .collect();
 
         for (p, d) in &digits {
-            let pos = Vec2::from(*p);
-
-            assert!(b.fits_at(d.mesh(), pos));
-            b.put_at(d.mesh(), pos);
+            assert!(b.fits_at(d.mesh(), *p));
+            b.insert_at(d.mesh(), *p);
         }
 
-        for _ in 0..digits.len() {
-            b.remove_last();
+        for (p, d) in &digits {
+            b.remove_at(d.mesh(), *p);
         }
 
         assert!(b.matrix.is_empty());
-        assert!(b.placements.is_empty());
     }
 }

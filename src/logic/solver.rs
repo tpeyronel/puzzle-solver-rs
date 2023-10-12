@@ -69,13 +69,13 @@ impl Solver {
 
                 if self.board.fits_at(v.mesh(), pos) {
                     self.solution.placed_shapes.push((pos, v.metadata().clone()));
-                    self.board.put_at(v.mesh(), pos);
+                    self.board.insert_at(v.mesh(), pos);
 
                     if self.solve_rec(candidates, pos) {
                         return true;
                     }
 
-                    self.board.remove_last();
+                    self.board.remove_at(candidates[i].variations[j].mesh(), pos);
                     self.solution.placed_shapes.pop();
                 }
             }
