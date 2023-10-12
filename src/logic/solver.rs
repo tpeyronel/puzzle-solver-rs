@@ -67,9 +67,9 @@ impl Solver {
             for j in 0..candidates[i].variations.len() {
                 let v = &candidates[i].variations[j];
 
-                if self.board.fits_at(&v.mesh(), pos) {
+                if self.board.fits_at(v.mesh(), pos) {
                     self.solution.placed_shapes.push((pos, v.metadata().clone()));
-                    self.board.put_at(&v.mesh(), pos);
+                    self.board.put_at(v.mesh(), pos);
 
                     if self.solve_rec(candidates, pos) {
                         return true;
