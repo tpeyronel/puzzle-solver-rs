@@ -8,7 +8,7 @@ use super::{
 
 struct Candidate {
     id: Rc<String>,
-    variations: Vec<Shape>,
+    variations: Vec<Rc<Shape>>,
     remaining: u32,
 }
 
@@ -52,7 +52,7 @@ impl Solver {
             return false;
         }
 
-        if (8..=10).contains(&self.total_remaining) {
+        if (7..=10).contains(&self.total_remaining) {
             println!("{}", self.total_remaining);
         }
 
@@ -104,32 +104,32 @@ impl Solver {
             .collect()
     }
 
-    fn compute_variations(shape: &Shape) -> Vec<Shape> {
+    fn compute_variations(shape: &Shape) -> Vec<Rc<Shape>> {
         let mut variations = vec![];
 
         let mut m = shape.mesh.clone();
         for i in 0..4 {
-            variations.push(Shape {
+            variations.push(Rc::new(Shape {
                 mesh: m.clone(),
                 metadata: ShapeMetadata {
                     id: shape.metadata.id.clone(),
                     rot: (shape.metadata.rot + i) % 4,
                     flipped: shape.metadata.flipped,
                 },
-            });
+            }));
             m = m.rotated_ccw();
         }
 
         let mut m = shape.mesh.flipped_hor();
         for i in 0..4 {
-            variations.push(Shape {
+            variations.push(Rc::new(Shape {
                 mesh: m.clone(),
                 metadata: ShapeMetadata {
                     id: shape.metadata.id.clone(),
                     rot: (shape.metadata.rot + i) % 4,
                     flipped: !shape.metadata.flipped,
                 },
-            });
+            }));
             m = m.rotated_ccw();
         }
 
