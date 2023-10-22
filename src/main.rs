@@ -30,5 +30,5 @@ fn main() {
 
     let solution = Solver::solve(6, 5, digits);
 
-    println!("{:?}", solution.unwrap().placed_shapes);
+    println!("{}", solution.unwrap());
 }

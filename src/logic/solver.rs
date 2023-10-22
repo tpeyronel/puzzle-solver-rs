@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use super::{board::Board, common::Vec2, shape::Shape};
 
 struct Candidate {
@@ -24,6 +26,34 @@ impl<'a> From<SolutionWithBorrows<'a>> for Solution {
                 .map(|(p, s)| (p, s.clone()))
                 .collect(),
         }
+    }
+}
+
+impl Display for Solution {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        const COL_WIDTH: usize = 8;
+
+        let mut output = format!(
+            "{0: ^w$}   {1: ^w$}   {2: ^w$}   {3: ^w$}\n",
+            "shape",
+            "rot",
+            "pos",
+            "flipped",
+            w = COL_WIDTH,
+        );
+
+        for (p, s) in &self.placed_shapes {
+            output += &format!(
+                "{0: ^w$}   {1: ^w$}   {2: ^w$}   {3: ^w$}\n",
+                format!("\"{}\"", s.metadata().id),
+                s.metadata().rot,
+                format!("({:>2},{:>2})", p.x, p.y),
+                if s.metadata().flipped { "y" } else { "n" },
+                w = COL_WIDTH,
+            );
+        }
+
+        f.write_str(&output)
     }
 }
 
