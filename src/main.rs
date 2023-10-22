@@ -28,19 +28,7 @@ fn main() {
         digit9(),
     ];
 
-    let mut solver = Solver::new(6, 5);
+    let solution = Solver::solve(6, 5, digits);
 
-    let solution = solver.solve(digits);
-
-    println!("{:?}", solution.unwrap());
-}
-
-#[test]
-fn test1() {
-    println!("Test1!");
-}
-
-#[test]
-fn test2() {
-    println!("Test2!");
+    println!("{:?}", solution.unwrap().placed_shapes);
 }

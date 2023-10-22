@@ -1,10 +1,8 @@
-use std::rc::Rc;
-
 use super::shape_mesh::ShapeMesh;
 
 #[derive(Debug, Clone)]
 pub struct ShapeMetadata {
-    pub id: Rc<String>,
+    pub id: String,
     pub rot: u32,
     pub flipped: bool,
 }
@@ -20,7 +18,7 @@ impl Shape {
         Self {
             mesh,
             metadata: ShapeMetadata {
-                id: Rc::new(id.into()),
+                id: id.into(),
                 rot: 0,
                 flipped: false,
             },
