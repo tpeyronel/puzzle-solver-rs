@@ -1,6 +1,8 @@
-use std::{fmt::Display, sync::mpsc};
+use std::{fmt::Display, sync::mpsc, time::{Instant, Duration}};
 
 use super::{board::Board, common::Vec2, shape::Shape};
+
+const UPDATE_INTERVAL: Duration = Duration::from_millis(250);
 
 #[derive(Debug, Clone)]
 struct Candidate {
@@ -18,13 +20,13 @@ pub struct Solution {
     pub placed_shapes: Vec<(Vec2, Shape)>,
 }
 
-impl<'a> From<SolutionWithBorrows<'a>> for Solution {
-    fn from(solution: SolutionWithBorrows<'a>) -> Self {
+impl<'a> From<&SolutionWithBorrows<'a>> for Solution {
+    fn from(solution: &SolutionWithBorrows<'a>) -> Self {
         Self {
             placed_shapes: solution
                 .placed_shapes
-                .into_iter()
-                .map(|(p, s)| (p, s.clone()))
+                .iter()
+                .map(|&(p, s)| (p, s.clone()))
                 .collect(),
         }
     }
@@ -59,6 +61,7 @@ impl Display for Solution {
 }
 
 pub enum SolutionMessage {
+    Ping,
     TotalSolution(Solution),
     PartialSolution(Solution),
 }
@@ -67,6 +70,8 @@ pub struct Solver<'a> {
     board: Board,
     total_remaining: u32,
     solution: SolutionWithBorrows<'a>,
+    tx: mpsc::Sender<SolutionMessage>,
+    last_report: Instant,
 }
 
 impl<'a> Solver<'a> {
@@ -87,13 +92,17 @@ impl<'a> Solver<'a> {
                         remaining[i] -= 1;
 
                         threadpool.execute(move || {
-                            let mut solver = Solver::new(width, height, remaining.iter().sum());
+                            if tx.send(SolutionMessage::Ping).is_err() {
+                                return;
+                            }
+
+                            let mut solver = Solver::new(width, height, remaining.iter().sum(), tx);
                             if !solver.try_seed(&seed) {
                                 return;
                             }
 
                             if solver.solve_rec(&candidates, &mut remaining, Vec2::ZERO) {
-                                tx.send(SolutionMessage::TotalSolution(solver.solution.into())).unwrap();
+                                let _ = solver.tx.send(SolutionMessage::TotalSolution((&solver.solution).into()));
                             }
                         });
                     }
@@ -103,19 +112,26 @@ impl<'a> Solver<'a> {
 
         while let Ok(s) = rx.recv() {
             match s {
-                SolutionMessage::TotalSolution(s) => return Some(s),
+                SolutionMessage::TotalSolution(s) => {
+                    drop(rx);
+                    threadpool.join();
+                    return Some(s);
+                },
                 SolutionMessage::PartialSolution(_) => continue,
+                SolutionMessage::Ping => continue,
             }
         }
 
         None
     }
 
-    fn new(width: u32, height: u32, total_remaining: u32) -> Self {
+    fn new(width: u32, height: u32, total_remaining: u32, tx: mpsc::Sender<SolutionMessage>) -> Self {
         Self {
             board: Board::new(width, height),
             total_remaining,
             solution: SolutionWithBorrows { placed_shapes: vec![] },
+            tx,
+            last_report: Instant::now(),
         }
     }
 
@@ -136,6 +152,15 @@ impl<'a> Solver<'a> {
         if self.total_remaining == 0 {
             return true;
         }
+
+        let now = Instant::now();
+        if (now - self.last_report) > UPDATE_INTERVAL {
+            self.last_report = now;
+            if self.tx.send(SolutionMessage::PartialSolution((&self.solution).into())).is_err() {
+                return true;
+            }
+        }
+
         if pos.x >= self.board.width() || pos.y >= self.board.height() {
             return false;
         }
