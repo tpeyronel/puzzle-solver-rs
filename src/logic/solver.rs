@@ -1,7 +1,8 @@
-use std::fmt::Display;
+use std::{fmt::Display, sync::mpsc};
 
 use super::{board::Board, common::Vec2, shape::Shape};
 
+#[derive(Debug, Clone)]
 struct Candidate {
     id: String,
     variations: Vec<Shape>,
@@ -57,6 +58,11 @@ impl Display for Solution {
     }
 }
 
+pub enum SolutionMessage {
+    TotalSolution(Solution),
+    PartialSolution(Solution),
+}
+
 pub struct Solver<'a> {
     board: Board,
     total_remaining: u32,
@@ -65,15 +71,44 @@ pub struct Solver<'a> {
 
 impl<'a> Solver<'a> {
     pub fn solve(width: u32, height: u32, shapes: Vec<Shape>) -> Option<Solution> {
-        let (candidates, mut remaining) = Self::to_candidates(shapes);
+        let (candidates, remaining) = Self::to_candidates(shapes);
 
-        let mut solver = Solver::new(width, height, remaining.iter().sum());
+        let threadpool = threadpool::Builder::new().thread_name("solver".into()).build();
+        let (tx, rx) = mpsc::channel::<SolutionMessage>();
 
-        if solver.solve_rec(&candidates, &mut remaining, Vec2::ZERO) {
-            Some(solver.solution.into())
-        } else {
-            None
+        for (i, c) in candidates.iter().enumerate() {
+            for v in &c.variations {
+                for x in 0..width {
+                    for y in 0..height {
+                        let tx = tx.clone();
+                        let seed = vec![(Vec2 { x, y }, v.clone())];
+                        let candidates = candidates.clone();
+                        let mut remaining = remaining.clone();
+                        remaining[i] -= 1;
+
+                        threadpool.execute(move || {
+                            let mut solver = Solver::new(width, height, remaining.iter().sum());
+                            if !solver.try_seed(&seed) {
+                                return;
+                            }
+
+                            if solver.solve_rec(&candidates, &mut remaining, Vec2::ZERO) {
+                                tx.send(SolutionMessage::TotalSolution(solver.solution.into())).unwrap();
+                            }
+                        });
+                    }
+                }
+            }
         }
+
+        while let Ok(s) = rx.recv() {
+            match s {
+                SolutionMessage::TotalSolution(s) => return Some(s),
+                SolutionMessage::PartialSolution(_) => continue,
+            }
+        }
+
+        None
     }
 
     fn new(width: u32, height: u32, total_remaining: u32) -> Self {
@@ -84,6 +119,19 @@ impl<'a> Solver<'a> {
         }
     }
 
+    fn try_seed(&mut self, seed: &'a Vec<(Vec2, Shape)>) -> bool {
+        for (p, s) in seed {
+            if !self.board.fits_at(s.mesh(), *p) {
+                return false;
+            }
+
+            self.board.insert_at(s.mesh(), *p);
+            self.solution.placed_shapes.push((*p, s));
+        }
+
+        return true;
+    }
+
     fn solve_rec(&mut self, candidates: &'a Vec<Candidate>, remaining: &mut Vec<u32>, pos: Vec2) -> bool {
         if self.total_remaining == 0 {
             return true;
@@ -92,7 +140,7 @@ impl<'a> Solver<'a> {
             return false;
         }
 
-        if (7..).contains(&self.total_remaining) {
+        if (8..).contains(&self.total_remaining) {
             println!("{}", self.total_remaining);
         }
 
