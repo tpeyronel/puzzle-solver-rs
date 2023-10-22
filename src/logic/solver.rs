@@ -1,4 +1,9 @@
-use std::{fmt::Display, sync::mpsc, time::{Instant, Duration}};
+use std::{
+    fmt::Display,
+    sync::mpsc,
+    thread::{self, available_parallelism, JoinHandle},
+    time::{Duration, Instant},
+};
 
 use super::{board::Board, common::Vec2, shape::Shape};
 
@@ -23,11 +28,7 @@ pub struct Solution {
 impl<'a> From<&SolutionWithBorrows<'a>> for Solution {
     fn from(solution: &SolutionWithBorrows<'a>) -> Self {
         Self {
-            placed_shapes: solution
-                .placed_shapes
-                .iter()
-                .map(|&(p, s)| (p, s.clone()))
-                .collect(),
+            placed_shapes: solution.placed_shapes.iter().map(|&(p, s)| (p, s.clone())).collect(),
         }
     }
 }
@@ -66,11 +67,18 @@ pub enum SolutionMessage {
     PartialSolution(Solution),
 }
 
+struct SolveTask {
+    sol_tx: mpsc::Sender<SolutionMessage>,
+    seed: Vec<(Vec2, Shape)>,
+    candidates: Vec<Candidate>,
+    remaining: Vec<u32>,
+}
+
 pub struct Solver<'a> {
     board: Board,
     total_remaining: u32,
     solution: SolutionWithBorrows<'a>,
-    tx: mpsc::Sender<SolutionMessage>,
+    sol_tx: mpsc::Sender<SolutionMessage>,
     last_report: Instant,
 }
 
@@ -78,45 +86,82 @@ impl<'a> Solver<'a> {
     pub fn solve(width: u32, height: u32, shapes: Vec<Shape>) -> Option<Solution> {
         let (candidates, remaining) = Self::to_candidates(shapes);
 
-        let threadpool = threadpool::Builder::new().thread_name("solver".into()).build();
-        let (tx, rx) = mpsc::channel::<SolutionMessage>();
+        let (task_tx, task_rx) = crossbeam_channel::unbounded::<SolveTask>();
 
-        for (i, c) in candidates.iter().enumerate() {
-            for v in &c.variations {
-                for x in 0..width {
-                    for y in 0..height {
-                        let tx = tx.clone();
+        let workers = (0..available_parallelism().unwrap().get())
+            .map(|i| {
+                let trx = task_rx.clone();
+
+                thread::spawn(move || {
+                    while let Ok(t) = trx.recv() {
+                        let SolveTask {
+                            sol_tx,
+                            seed,
+                            candidates,
+                            mut remaining,
+                        } = t;
+
+                        if sol_tx.send(SolutionMessage::Ping).is_err() {
+                            break;
+                        }
+
+                        let mut solver = Solver::new(width, height, remaining.iter().sum(), sol_tx);
+                        if !solver.try_seed(&seed) {
+                            continue;
+                        }
+
+                        if solver.solve_rec(&candidates, &mut remaining, Vec2::ZERO) {
+                            let _ = solver
+                                .sol_tx
+                                .send(SolutionMessage::TotalSolution((&solver.solution).into()));
+                        }
+                    }
+                })
+            })
+            .collect::<Vec<JoinHandle<()>>>();
+
+        let (sol_tx, sol_rx) = mpsc::channel::<SolutionMessage>();
+
+        for x in 0..width {
+            for y in 0..height {
+                for (i, c) in candidates.iter().enumerate() {
+                    for v in &c.variations {
+                        let sol_tx = sol_tx.clone();
                         let seed = vec![(Vec2 { x, y }, v.clone())];
                         let candidates = candidates.clone();
                         let mut remaining = remaining.clone();
                         remaining[i] -= 1;
 
-                        threadpool.execute(move || {
-                            if tx.send(SolutionMessage::Ping).is_err() {
-                                return;
-                            }
+                        let task = SolveTask {
+                            sol_tx,
+                            seed,
+                            candidates,
+                            remaining,
+                        };
 
-                            let mut solver = Solver::new(width, height, remaining.iter().sum(), tx);
-                            if !solver.try_seed(&seed) {
-                                return;
-                            }
-
-                            if solver.solve_rec(&candidates, &mut remaining, Vec2::ZERO) {
-                                let _ = solver.tx.send(SolutionMessage::TotalSolution((&solver.solution).into()));
-                            }
-                        });
+                        task_tx.send(task).unwrap();
                     }
                 }
             }
         }
 
-        while let Ok(s) = rx.recv() {
+        drop(task_tx);
+
+        while let Ok(s) = sol_rx.recv() {
             match s {
                 SolutionMessage::TotalSolution(s) => {
-                    drop(rx);
-                    threadpool.join();
+                    // Drop sol_rx so that workers finish early
+                    drop(sol_rx);
+
+                    // Drain task_rx
+                    while let Ok(_) = task_rx.recv() {}
+
+                    for w in workers {
+                        let _ = w.join();
+                    }
+
                     return Some(s);
-                },
+                }
                 SolutionMessage::PartialSolution(_) => continue,
                 SolutionMessage::Ping => continue,
             }
@@ -130,7 +175,7 @@ impl<'a> Solver<'a> {
             board: Board::new(width, height),
             total_remaining,
             solution: SolutionWithBorrows { placed_shapes: vec![] },
-            tx,
+            sol_tx: tx,
             last_report: Instant::now(),
         }
     }
@@ -153,10 +198,15 @@ impl<'a> Solver<'a> {
             return true;
         }
 
+        // TODO: use non atomic bools that get set by another background thread.
         let now = Instant::now();
         if (now - self.last_report) > UPDATE_INTERVAL {
             self.last_report = now;
-            if self.tx.send(SolutionMessage::PartialSolution((&self.solution).into())).is_err() {
+            if self
+                .sol_tx
+                .send(SolutionMessage::PartialSolution((&self.solution).into()))
+                .is_err()
+            {
                 return true;
             }
         }
