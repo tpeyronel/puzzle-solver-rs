@@ -190,11 +190,11 @@ pub fn solve(width: u32, height: u32, shapes: Vec<Shape>) -> Option<Solution> {
     while let Ok(s) = sol_rx.recv() {
         match s {
             SolutionMessage::TotalSolution(s) => {
-                // Drain all tasks so that workers don't begin useless tasks
-                while let Ok(_) = task_rx.recv() {}
-
                 // Drop sol_rx so that workers finish early
                 drop(sol_rx);
+
+                // Drain all tasks so that workers don't begin useless tasks
+                while let Ok(_) = task_rx.recv() {}
 
                 // Wait for all workers to finish
                 for w in workers {
