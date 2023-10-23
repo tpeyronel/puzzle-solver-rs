@@ -68,6 +68,8 @@ pub enum SolutionMessage {
 }
 
 struct SolveTask {
+    width: u32,
+    height: u32,
     sol_tx: mpsc::Sender<SolutionMessage>,
     seed: Vec<(Vec2, Shape)>,
     candidates: Vec<Candidate>,
@@ -84,78 +86,22 @@ pub struct Solver<'a> {
 
 impl<'a> Solver<'a> {
     pub fn solve(width: u32, height: u32, shapes: Vec<Shape>) -> Option<Solution> {
-        let (candidates, remaining) = Self::to_candidates(shapes);
-
         let (task_tx, task_rx) = crossbeam_channel::unbounded::<SolveTask>();
-
-        let workers = (0..available_parallelism().unwrap().get())
-            .map(|i| {
-                let trx = task_rx.clone();
-
-                thread::spawn(move || {
-                    while let Ok(t) = trx.recv() {
-                        let SolveTask {
-                            sol_tx,
-                            seed,
-                            candidates,
-                            mut remaining,
-                        } = t;
-
-                        if sol_tx.send(SolutionMessage::Ping).is_err() {
-                            break;
-                        }
-
-                        let mut solver = Solver::new(width, height, remaining.iter().sum(), sol_tx);
-                        if !solver.try_seed(&seed) {
-                            continue;
-                        }
-
-                        if solver.solve_rec(&candidates, &mut remaining, Vec2::ZERO) {
-                            let _ = solver
-                                .sol_tx
-                                .send(SolutionMessage::TotalSolution((&solver.solution).into()));
-                        }
-                    }
-                })
-            })
-            .collect::<Vec<JoinHandle<()>>>();
+        let workers = spawn_workers(&task_rx);
 
         let (sol_tx, sol_rx) = mpsc::channel::<SolutionMessage>();
-
-        for x in 0..width {
-            for y in 0..height {
-                for (i, c) in candidates.iter().enumerate() {
-                    for v in &c.variations {
-                        let sol_tx = sol_tx.clone();
-                        let seed = vec![(Vec2 { x, y }, v.clone())];
-                        let candidates = candidates.clone();
-                        let mut remaining = remaining.clone();
-                        remaining[i] -= 1;
-
-                        let task = SolveTask {
-                            sol_tx,
-                            seed,
-                            candidates,
-                            remaining,
-                        };
-
-                        task_tx.send(task).unwrap();
-                    }
-                }
-            }
-        }
-
-        drop(task_tx);
+        send_solve_tasks(width, height, shapes, sol_tx, task_tx);
 
         while let Ok(s) = sol_rx.recv() {
             match s {
                 SolutionMessage::TotalSolution(s) => {
+                    // Drain all tasks so that workers don't begin useless tasks
+                    while let Ok(_) = task_rx.recv() {}
+
                     // Drop sol_rx so that workers finish early
                     drop(sol_rx);
 
-                    // Drain task_rx
-                    while let Ok(_) = task_rx.recv() {}
-
+                    // Wait for all workers to finish
                     for w in workers {
                         let _ = w.join();
                     }
@@ -253,40 +199,115 @@ impl<'a> Solver<'a> {
 
         return self.solve_rec(candidates, remaining, next_pos);
     }
+}
 
-    fn to_candidates(shapes: Vec<Shape>) -> (Vec<Candidate>, Vec<u32>) {
-        shapes
-            .iter()
-            .map(|s| {
-                (
-                    Candidate {
-                        id: s.metadata().id.clone(),
-                        variations: Self::compute_variations(s),
-                    },
-                    1,
-                )
-            })
-            .collect::<Vec<(Candidate, u32)>>()
-            .into_iter()
-            .unzip()
-    }
+fn spawn_workers(task_rx: &crossbeam_channel::Receiver<SolveTask>) -> Vec<JoinHandle<()>> {
+    let count = available_parallelism().unwrap().get();
 
-    fn compute_variations(shape: &Shape) -> Vec<Shape> {
-        fn push_rotations(mut shape: Shape, variations: &mut Vec<Shape>) {
-            for _ in 0..4 {
-                let next = shape.rotated_ccw();
-                variations.push(shape);
-                shape = next;
-            }
+    (0..count)
+        .map(|i| {
+            let task_rx = task_rx.clone();
+
+            thread::spawn(move || run_worker(task_rx))
+        })
+        .collect()
+}
+
+fn run_worker(task_rx: crossbeam_channel::Receiver<SolveTask>) {
+    while let Ok(t) = task_rx.recv() {
+        let SolveTask {
+            width,
+            height,
+            sol_tx,
+            seed,
+            candidates,
+            mut remaining,
+        } = t;
+
+        if sol_tx.send(SolutionMessage::Ping).is_err() {
+            break;
         }
 
-        let mut variations = vec![];
+        let mut solver = Solver::new(width, height, remaining.iter().sum(), sol_tx);
+        if !solver.try_seed(&seed) {
+            continue;
+        }
 
-        push_rotations(shape.clone(), &mut variations);
-        push_rotations(shape.flipped_hor(), &mut variations);
-
-        variations
+        if solver.solve_rec(&candidates, &mut remaining, Vec2::ZERO) {
+            let _ = solver
+                .sol_tx
+                .send(SolutionMessage::TotalSolution((&solver.solution).into()));
+        }
     }
+}
+
+fn send_solve_tasks(
+    width: u32,
+    height: u32,
+    shapes: Vec<Shape>,
+    sol_tx: mpsc::Sender<SolutionMessage>,
+    task_tx: crossbeam_channel::Sender<SolveTask>,
+) {
+    let (candidates, remaining) = shapes_to_candidates(shapes);
+
+    for x in 0..width {
+        for y in 0..height {
+            for (i, c) in candidates.iter().enumerate() {
+                for v in &c.variations {
+                    let sol_tx = sol_tx.clone();
+                    let seed = vec![(Vec2 { x, y }, v.clone())];
+                    let candidates = candidates.clone();
+                    let mut remaining = remaining.clone();
+                    remaining[i] -= 1;
+
+                    let task = SolveTask {
+                        width,
+                        height,
+                        sol_tx,
+                        seed,
+                        candidates,
+                        remaining,
+                    };
+
+                    task_tx.send(task).unwrap();
+                }
+            }
+        }
+    }
+}
+
+fn shapes_to_candidates(shapes: Vec<Shape>) -> (Vec<Candidate>, Vec<u32>) {
+    shapes
+        .iter()
+        .map(|s| {
+            (
+                Candidate {
+                    id: s.metadata().id.clone(),
+                    variations: compute_shape_variations(s),
+                },
+                1,
+            )
+        })
+        .collect::<Vec<(Candidate, u32)>>()
+        .into_iter()
+        .unzip()
+}
+
+fn compute_shape_variations(shape: &Shape) -> Vec<Shape> {
+    fn push_rotations(mut shape: Shape, variations: &mut Vec<Shape>) {
+        for _ in 0..4 {
+            let next = shape.rotated_ccw();
+            variations.push(shape);
+            shape = next;
+        }
+    }
+
+    let mut variations = vec![];
+
+    push_rotations(shape.clone(), &mut variations);
+    push_rotations(shape.flipped_hor(), &mut variations);
+
+    variations
 }
 
 #[cfg(test)]
