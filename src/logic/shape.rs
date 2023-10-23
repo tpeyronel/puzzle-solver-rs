@@ -1,13 +1,15 @@
+use serde::{Deserialize, Serialize};
+
 use super::shape_mesh::ShapeMesh;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShapeMetadata {
     pub id: String,
     pub rot: u32,
     pub flipped: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Shape {
     mesh: ShapeMesh,
     metadata: ShapeMetadata,

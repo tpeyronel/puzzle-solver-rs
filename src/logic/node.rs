@@ -1,7 +1,9 @@
+use serde::{Deserialize, Serialize};
+
 use super::common::{Vec2, Vec2i};
 
 bitflags::bitflags! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     pub struct NodeData: u8 {
         const EDGE_RIGHT   = 1 << 0;
         const EDGE_UP      = 1 << 1;
@@ -22,7 +24,7 @@ pub struct UnnormalizedNode {
     pub pos: Vec2i,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Node {
     pub data: NodeData,
     pub pos: Vec2,

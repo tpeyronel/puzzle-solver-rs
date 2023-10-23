@@ -1,6 +1,8 @@
+use serde::Serialize;
+
 use super::{common::Vec2, node::NodeData};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct NodeMatrix {
     width: u32,
     height: u32,

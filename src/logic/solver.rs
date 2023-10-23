@@ -5,6 +5,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use serde::Serialize;
+
 use super::{board::Board, common::Vec2, shape::Shape};
 
 const UPDATE_INTERVAL: Duration = Duration::from_millis(250);
@@ -20,7 +22,7 @@ struct SolutionWithBorrows<'a> {
     placed_shapes: Vec<(Vec2, &'a Shape)>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Solution {
     pub placed_shapes: Vec<(Vec2, Shape)>,
 }

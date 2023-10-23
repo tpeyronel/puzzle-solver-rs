@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
+
 use super::{
     common::{Vec2, Vec2i},
     node::{Node, NodeData, UnnormalizedNode},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShapeMesh {
     nodes: Box<[Node]>,
     bb_top_right: Vec2,
@@ -163,7 +165,7 @@ impl From<Vec<UnnormalizedNode>> for ShapeMesh {
             .into_iter()
             .map(|un| Node {
                 data: un.data,
-                pos: (un.pos - bottom_left).as_uvec2(),
+                pos: (un.pos - bottom_left).into(),
             })
             .collect::<Vec<Node>>();
 
