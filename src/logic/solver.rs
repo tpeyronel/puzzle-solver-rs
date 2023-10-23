@@ -16,7 +16,7 @@ struct Candidate {
 }
 
 #[derive(Debug, Clone)]
-pub struct SolutionWithBorrows<'a> {
+struct SolutionWithBorrows<'a> {
     placed_shapes: Vec<(Vec2, &'a Shape)>,
 }
 
@@ -76,7 +76,7 @@ struct SolveTask {
     remaining: Vec<u32>,
 }
 
-pub struct Solver<'a> {
+struct Solver<'a> {
     board: Board,
     total_remaining: u32,
     solution: SolutionWithBorrows<'a>,
@@ -85,44 +85,23 @@ pub struct Solver<'a> {
 }
 
 impl<'a> Solver<'a> {
-    pub fn solve(width: u32, height: u32, shapes: Vec<Shape>) -> Option<Solution> {
-        let (task_tx, task_rx) = crossbeam_channel::unbounded::<SolveTask>();
-        let workers = spawn_workers(&task_rx);
-
-        let (sol_tx, sol_rx) = mpsc::channel::<SolutionMessage>();
-        send_solve_tasks(width, height, shapes, sol_tx, task_tx);
-
-        while let Ok(s) = sol_rx.recv() {
-            match s {
-                SolutionMessage::TotalSolution(s) => {
-                    // Drain all tasks so that workers don't begin useless tasks
-                    while let Ok(_) = task_rx.recv() {}
-
-                    // Drop sol_rx so that workers finish early
-                    drop(sol_rx);
-
-                    // Wait for all workers to finish
-                    for w in workers {
-                        let _ = w.join();
-                    }
-
-                    return Some(s);
-                }
-                SolutionMessage::PartialSolution(_) => continue,
-                SolutionMessage::Ping => continue,
-            }
-        }
-
-        None
-    }
-
-    fn new(width: u32, height: u32, total_remaining: u32, tx: mpsc::Sender<SolutionMessage>) -> Self {
+    fn new(width: u32, height: u32, sol_tx: mpsc::Sender<SolutionMessage>) -> Self {
         Self {
             board: Board::new(width, height),
-            total_remaining,
+            total_remaining: 0,
             solution: SolutionWithBorrows { placed_shapes: vec![] },
-            sol_tx: tx,
+            sol_tx,
             last_report: Instant::now(),
+        }
+    }
+
+    fn solve(&mut self, candidates: &'a Vec<Candidate>, remaining: &mut Vec<u32>) {
+        self.total_remaining = remaining.iter().sum();
+
+        if self.solve_rec(candidates, remaining, Vec2::ZERO) {
+            let _ = self
+                .sol_tx
+                .send(SolutionMessage::TotalSolution((&self.solution).into()));
         }
     }
 
@@ -201,6 +180,37 @@ impl<'a> Solver<'a> {
     }
 }
 
+pub fn solve(width: u32, height: u32, shapes: Vec<Shape>) -> Option<Solution> {
+    let (task_tx, task_rx) = crossbeam_channel::unbounded::<SolveTask>();
+    let workers = spawn_workers(&task_rx);
+
+    let (sol_tx, sol_rx) = mpsc::channel::<SolutionMessage>();
+    send_solve_tasks(width, height, shapes, sol_tx, task_tx);
+
+    while let Ok(s) = sol_rx.recv() {
+        match s {
+            SolutionMessage::TotalSolution(s) => {
+                // Drain all tasks so that workers don't begin useless tasks
+                while let Ok(_) = task_rx.recv() {}
+
+                // Drop sol_rx so that workers finish early
+                drop(sol_rx);
+
+                // Wait for all workers to finish
+                for w in workers {
+                    let _ = w.join();
+                }
+
+                return Some(s);
+            }
+            SolutionMessage::PartialSolution(_) => continue,
+            SolutionMessage::Ping => continue,
+        }
+    }
+
+    None
+}
+
 fn spawn_workers(task_rx: &crossbeam_channel::Receiver<SolveTask>) -> Vec<JoinHandle<()>> {
     let count = available_parallelism().unwrap().get();
 
@@ -228,16 +238,13 @@ fn run_worker(task_rx: crossbeam_channel::Receiver<SolveTask>) {
             break;
         }
 
-        let mut solver = Solver::new(width, height, remaining.iter().sum(), sol_tx);
+        let mut solver = Solver::new(width, height, sol_tx);
+
         if !solver.try_seed(&seed) {
             continue;
         }
 
-        if solver.solve_rec(&candidates, &mut remaining, Vec2::ZERO) {
-            let _ = solver
-                .sol_tx
-                .send(SolutionMessage::TotalSolution((&solver.solution).into()));
-        }
+        solver.solve(&candidates, &mut remaining);
     }
 }
 
@@ -312,15 +319,16 @@ fn compute_shape_variations(shape: &Shape) -> Vec<Shape> {
 
 #[cfg(test)]
 mod tests {
-    use crate::logic::digits::{digit0, digit1, digit2, digit3, digit4, digit5, digit6, digit7, digit8, digit9};
-
-    use super::Solver;
+    use crate::logic::{
+        digits::{digit0, digit1, digit2, digit3, digit4, digit5, digit6, digit7, digit8, digit9},
+        solver,
+    };
 
     #[test]
     fn solve_works_for_digits_8() {
         let digits = vec![digit8()];
 
-        let solution = Solver::solve(2, 3, digits);
+        let solution = solver::solve(2, 3, digits);
 
         println!("{:?}", solution.unwrap());
     }
@@ -329,7 +337,7 @@ mod tests {
     fn solve_works_for_digits_3_8() {
         let digits = vec![digit3(), digit8()];
 
-        let solution = Solver::solve(3, 3, digits);
+        let solution = solver::solve(3, 3, digits);
 
         println!("{:?}", solution.unwrap());
     }
@@ -338,7 +346,7 @@ mod tests {
     fn solve_works_for_digits_0_1_7() {
         let digits = vec![digit0(), digit1(), digit7()];
 
-        let solution = Solver::solve(3, 3, digits);
+        let solution = solver::solve(3, 3, digits);
 
         println!("{:?}", solution.unwrap());
     }
@@ -347,7 +355,7 @@ mod tests {
     fn solve_works_for_digits_6_9() {
         let digits = vec![digit9(), digit6()];
 
-        let solution = Solver::solve(3, 3, digits);
+        let solution = solver::solve(3, 3, digits);
 
         println!("{:?}", solution.unwrap());
     }
@@ -356,7 +364,7 @@ mod tests {
     fn solve_works_for_digits_3_6_9() {
         let digits = vec![digit3(), digit9(), digit6()];
 
-        let solution = Solver::solve(3, 4, digits);
+        let solution = solver::solve(3, 4, digits);
 
         println!("{:?}", solution.unwrap());
     }
@@ -365,7 +373,7 @@ mod tests {
     fn solve_works_for_digits_0_1_4_7_8() {
         let digits = vec![digit0(), digit1(), digit4(), digit7(), digit8()];
 
-        let solution = Solver::solve(5, 3, digits);
+        let solution = solver::solve(5, 3, digits);
 
         println!("{:?}", solution.unwrap());
     }
@@ -385,7 +393,7 @@ mod tests {
             digit9(),
         ];
 
-        let solution = Solver::solve(6, 5, digits);
+        let solution = solver::solve(6, 5, digits);
 
         println!("{:?}", solution.unwrap());
     }

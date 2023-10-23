@@ -1,7 +1,4 @@
-use crate::logic::{
-    digits::{digit0, digit1, digit2, digit3, digit4, digit5, digit6, digit7, digit8, digit9},
-    solver::Solver,
-};
+use crate::logic::{digits::{digit0, digit1, digit2, digit3, digit4, digit5, digit6, digit7, digit8, digit9}, solver};
 
 mod logic {
     pub mod board;
@@ -28,7 +25,7 @@ fn main() {
         digit9(),
     ];
 
-    let solution = Solver::solve(6, 5, digits);
+    let solution = solver::solve(6, 5, digits);
 
     println!("{}", solution.unwrap());
 }

@@ -557,6 +557,7 @@ pub fn digit1_rot_ccw() -> Shape {
 }
 
 #[rustfmt::skip]
+#[allow(unused)]
 pub fn digit7_flipped_hor() -> Shape {
     Shape::new(
         "7f",
