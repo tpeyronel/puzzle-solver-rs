@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use super::{common::Vec2, node::NodeData};
+use super::{common::Vec2, node::NodeData, shape::Shape};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct NodeMatrix {
@@ -61,5 +61,48 @@ impl std::ops::Index<(u32, u32)> for NodeMatrix {
 impl std::ops::IndexMut<(u32, u32)> for NodeMatrix {
     fn index_mut(&mut self, pos: (u32, u32)) -> &mut Self::Output {
         return &mut self.data[self.calc_index(pos.0, pos.1)];
+    }
+}
+
+impl From<Shape> for NodeMatrix {
+    fn from(shape: Shape) -> Self {
+        let nodes = shape.mesh().nodes();
+
+        let top_right_pos = nodes.iter().map(|n| n.pos).reduce(Vec2::max).unwrap_or(Vec2::ZERO);
+
+        let mut mat = Self::new(top_right_pos.x + 1, top_right_pos.y + 1);
+
+        for n in nodes {
+            mat[n.pos] = n.data;
+        }
+
+        mat
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::logic::{common::Vec2, digits, node::NodeData, node_matrix::NodeMatrix};
+
+    #[test]
+    fn digit2_to_node_matrix() {
+        let digit2 = digits::digit2();
+
+        let matrix = NodeMatrix::from(digit2.clone());
+
+        assert_eq!(matrix.width, 2);
+        assert_eq!(matrix.height, 3);
+
+        for x in 0..matrix.width {
+            for y in 0..matrix.height {
+                let pos = Vec2::new(x, y);
+
+                if let Some(node) = digit2.mesh().nodes().into_iter().find(|n| n.pos == pos) {
+                    assert_eq!(matrix[pos], node.data);
+                } else {
+                    assert_eq!(matrix[pos], NodeData::empty());
+                }
+            }
+        }
     }
 }

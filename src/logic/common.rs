@@ -30,6 +30,14 @@ impl Vec2 {
             y: u32::min(self.y, rhs.y),
         }
     }
+
+    #[inline]
+    pub fn max(self, rhs: Self) -> Self {
+        Self {
+            x: u32::max(self.x, rhs.x),
+            y: u32::max(self.y, rhs.y),
+        }
+    }
 }
 
 impl Add<Vec2> for Vec2 {
