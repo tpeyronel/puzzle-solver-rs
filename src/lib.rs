@@ -9,9 +9,8 @@ mod logic {
     pub mod solver;
 }
 
-use logic::digits::digit2;
-
 pub use crate::logic::{
+    digits::{digit0, digit1, digit2, digit3, digit4, digit5, digit6, digit7, digit8, digit9, digits},
     node_matrix::NodeMatrix,
     solver::{solve, Solution, SolutionMessage},
 };
