@@ -98,7 +98,7 @@ impl From<&Solution> for NodeMatrix {
             let mesh = shape.mesh();
 
             for n in mesh.nodes() {
-                mat[*pos + n.pos] = n.data;
+                mat[*pos + n.pos].insert(n.data);
             }
         }
 
