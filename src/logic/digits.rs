@@ -535,6 +535,22 @@ pub fn digits() -> Vec<Shape> {
 }
 
 #[allow(unused)]
+pub fn easy_digits() -> Vec<Shape> {
+    vec![
+        digit0().rotated_ccw().rotated_ccw(),
+        digit7(),
+        digit1().rotated_ccw(),
+        digit6(),
+        digit2(),
+        digit3(),
+        digit4(),
+        digit5(),
+        digit8(),
+        digit9(),
+    ]
+}
+
+#[allow(unused)]
 pub fn digit1_rot_ccw() -> Shape {
     Shape::new(
         "1r",
