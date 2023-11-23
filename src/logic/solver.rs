@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 
 use super::{board::Board, common::Vec2, shape::Shape};
 
-const UPDATE_INTERVAL: Duration = Duration::from_millis(250);
+const UPDATE_INTERVAL: Duration = Duration::from_millis(100);
 
 #[derive(Debug, Clone)]
 struct Candidate {
@@ -67,6 +67,7 @@ pub enum SolverMessage {
     Ping,
     SolversBegin { threads: u32 },
     SolutionMessage(SolutionMessage),
+    SolverEnd { elapsed: Duration },
 }
 
 pub struct SolutionMessage {
@@ -112,7 +113,13 @@ impl<'a> Solver<'a> {
     fn solve(&mut self, candidates: &'a Vec<Candidate>, remaining: &mut Vec<u32>) {
         self.total_remaining = remaining.iter().sum();
 
-        if self.solve_rec(candidates, remaining, Vec2::ZERO) {
+        let start = Instant::now();
+        let solved = self.solve_rec(candidates, remaining, Vec2::ZERO);
+        let elapsed = start.elapsed();
+
+        let _ = self.sol_tx.send(SolverMessage::SolverEnd { elapsed });
+
+        if solved {
             let _ = self.sol_tx.send(SolverMessage::SolutionMessage(SolutionMessage {
                 threadi: self.threadi,
                 payload: SolutionPayload::TotalSolution((&self.solution).into()),
@@ -155,10 +162,6 @@ impl<'a> Solver<'a> {
 
         if pos.x >= self.board.width() || pos.y >= self.board.height() {
             return false;
-        }
-
-        if (8..).contains(&self.total_remaining) {
-            println!("{}", self.total_remaining);
         }
 
         for (i, c) in candidates.iter().enumerate() {
@@ -214,6 +217,9 @@ pub fn solve_async(
 pub fn solve(width: u32, height: u32, shapes: Vec<Shape>) -> Option<Solution> {
     let (mut sol_rx, workers) = solve_async(width, height, shapes);
 
+    let mut sum = Duration::ZERO;
+    let mut count = 0;
+
     while let Some(msg) = sol_rx.blocking_recv() {
         match msg {
             SolverMessage::SolutionMessage(SolutionMessage {
@@ -230,9 +236,15 @@ pub fn solve(width: u32, height: u32, shapes: Vec<Shape>) -> Option<Solution> {
 
                 return Some(sol);
             }
+            SolverMessage::SolverEnd { elapsed } => {
+                sum += elapsed;
+                count += 1;
+            }
             _ => continue,
         }
     }
+
+    println!("Took: {} ms", (sum / count).as_millis());
 
     None
 }
