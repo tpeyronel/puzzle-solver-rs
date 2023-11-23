@@ -20,6 +20,21 @@ impl NodeMatrix {
         }
     }
 
+    #[allow(dead_code)]
+    pub fn from_solution(width: u32, height: u32, solution: &Solution) -> Self {
+        let mut mat = Self::new(width, height);
+
+        for (pos, shape) in &solution.placed_shapes {
+            let mesh = shape.mesh();
+
+            for n in mesh.nodes() {
+                mat[*pos + n.pos].insert(n.data);
+            }
+        }
+
+        mat
+    }
+
     pub fn width(&self) -> u32 {
         self.width
     }
@@ -76,30 +91,6 @@ impl From<Shape> for NodeMatrix {
 
         for n in nodes {
             mat[n.pos] = n.data;
-        }
-
-        mat
-    }
-}
-
-impl From<&Solution> for NodeMatrix {
-    fn from(solution: &Solution) -> Self {
-        let top_right_pos = solution
-            .placed_shapes
-            .iter()
-            .map(|(pos, sh)| sh.mesh().nodes().iter().map(|n| *pos + n.pos))
-            .flatten()
-            .reduce(Vec2::max)
-            .unwrap_or(Vec2::ZERO);
-
-        let mut mat = Self::new(top_right_pos.x + 1, top_right_pos.y + 1);
-
-        for (pos, shape) in &solution.placed_shapes {
-            let mesh = shape.mesh();
-
-            for n in mesh.nodes() {
-                mat[*pos + n.pos].insert(n.data);
-            }
         }
 
         mat
