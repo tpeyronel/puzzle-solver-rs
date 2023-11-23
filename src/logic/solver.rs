@@ -70,8 +70,8 @@ pub enum SolverMessage {
 }
 
 pub struct SolutionMessage {
-    threadi: u32,
-    payload: SolutionPayload,
+    pub threadi: u32,
+    pub payload: SolutionPayload,
 }
 
 pub enum SolutionPayload {

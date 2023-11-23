@@ -14,7 +14,7 @@ pub use crate::logic::{
     node_matrix::NodeMatrix,
     shape::Shape,
     shape_mesh::ShapeMesh,
-    solver::{solve, Solution, SolverMessage},
+    solver::{solve, solve_async, Solution, SolverMessage},
 };
 
 pub fn dummy_node_matrix() -> NodeMatrix {
