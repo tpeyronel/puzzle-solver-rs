@@ -1,5 +1,7 @@
 use serde::Serialize;
 
+use crate::logic::solver::Solution;
+
 use super::{common::Vec2, node::NodeData, shape::Shape};
 
 #[derive(Debug, Clone, Serialize)]
@@ -74,6 +76,30 @@ impl From<Shape> for NodeMatrix {
 
         for n in nodes {
             mat[n.pos] = n.data;
+        }
+
+        mat
+    }
+}
+
+impl From<&Solution> for NodeMatrix {
+    fn from(solution: &Solution) -> Self {
+        let top_right_pos = solution
+            .placed_shapes
+            .iter()
+            .map(|(pos, sh)| sh.mesh().nodes().iter().map(|n| *pos + n.pos))
+            .flatten()
+            .reduce(Vec2::max)
+            .unwrap_or(Vec2::ZERO);
+
+        let mut mat = Self::new(top_right_pos.x + 1, top_right_pos.y + 1);
+
+        for (pos, shape) in &solution.placed_shapes {
+            let mesh = shape.mesh();
+
+            for n in mesh.nodes() {
+                mat[*pos + n.pos] = n.data;
+            }
         }
 
         mat
