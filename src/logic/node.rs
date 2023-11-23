@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 use super::common::{Vec2, Vec2i};
 
 bitflags::bitflags! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(from = "u8", into = "u8")]
     pub struct NodeData: u8 {
         const EDGE_RIGHT   = 1 << 0;
         const EDGE_UP      = 1 << 1;
@@ -18,21 +19,15 @@ bitflags::bitflags! {
     }
 }
 
-impl Serialize for NodeData {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_u8(self.bits())
+impl From<u8> for NodeData {
+    fn from(value: u8) -> Self {
+        Self::from_bits_truncate(value)
     }
 }
 
-impl<'de> Deserialize<'de> for NodeData {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        Ok(Self::from_bits_truncate(u8::deserialize(deserializer)?))
+impl From<NodeData> for u8 {
+    fn from(value: NodeData) -> Self {
+        value.bits()
     }
 }
 
