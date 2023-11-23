@@ -1,11 +1,11 @@
 use std::{
     fmt::Display,
-    sync::mpsc,
     thread::{self, available_parallelism, JoinHandle},
     time::{Duration, Instant},
 };
 
 use serde::Serialize;
+use tokio::sync::mpsc;
 
 use super::{board::Board, common::Vec2, shape::Shape};
 
@@ -63,32 +63,44 @@ impl Display for Solution {
     }
 }
 
-pub enum SolutionMessage {
+pub enum SolverMessage {
     Ping,
-    TotalSolution(Solution),
+    SolversBegin { threads: u32 },
+    SolutionMessage(SolutionMessage),
+}
+
+pub struct SolutionMessage {
+    threadi: u32,
+    payload: SolutionPayload,
+}
+
+pub enum SolutionPayload {
     PartialSolution(Solution),
+    TotalSolution(Solution),
 }
 
 struct SolveTask {
     width: u32,
     height: u32,
-    sol_tx: mpsc::Sender<SolutionMessage>,
+    sol_tx: mpsc::UnboundedSender<SolverMessage>,
     seed: Vec<(Vec2, Shape)>,
     candidates: Vec<Candidate>,
     remaining: Vec<u32>,
 }
 
 struct Solver<'a> {
+    threadi: u32,
     board: Board,
     total_remaining: u32,
     solution: SolutionWithBorrows<'a>,
-    sol_tx: mpsc::Sender<SolutionMessage>,
+    sol_tx: mpsc::UnboundedSender<SolverMessage>,
     last_report: Instant,
 }
 
 impl<'a> Solver<'a> {
-    fn new(width: u32, height: u32, sol_tx: mpsc::Sender<SolutionMessage>) -> Self {
+    fn new(threadi: u32, width: u32, height: u32, sol_tx: mpsc::UnboundedSender<SolverMessage>) -> Self {
         Self {
+            threadi,
             board: Board::new(width, height),
             total_remaining: 0,
             solution: SolutionWithBorrows { placed_shapes: vec![] },
@@ -101,9 +113,10 @@ impl<'a> Solver<'a> {
         self.total_remaining = remaining.iter().sum();
 
         if self.solve_rec(candidates, remaining, Vec2::ZERO) {
-            let _ = self
-                .sol_tx
-                .send(SolutionMessage::TotalSolution((&self.solution).into()));
+            let _ = self.sol_tx.send(SolverMessage::SolutionMessage(SolutionMessage {
+                threadi: self.threadi,
+                payload: SolutionPayload::TotalSolution((&self.solution).into()),
+            }));
         }
     }
 
@@ -129,11 +142,13 @@ impl<'a> Solver<'a> {
         let now = Instant::now();
         if (now - self.last_report) > UPDATE_INTERVAL {
             self.last_report = now;
-            if self
-                .sol_tx
-                .send(SolutionMessage::PartialSolution((&self.solution).into()))
-                .is_err()
-            {
+
+            let message = SolverMessage::SolutionMessage(SolutionMessage {
+                threadi: self.threadi,
+                payload: SolutionPayload::PartialSolution((&self.solution).into()),
+            });
+
+            if self.sol_tx.send(message).is_err() {
                 return true;
             }
         }
@@ -182,31 +197,40 @@ impl<'a> Solver<'a> {
     }
 }
 
-pub fn solve(width: u32, height: u32, shapes: Vec<Shape>) -> Option<Solution> {
+pub fn solve_async(
+    width: u32,
+    height: u32,
+    shapes: Vec<Shape>,
+) -> (mpsc::UnboundedReceiver<SolverMessage>, Vec<JoinHandle<()>>) {
     let (task_tx, task_rx) = crossbeam_channel::unbounded::<SolveTask>();
     let workers = spawn_workers(&task_rx);
 
-    let (sol_tx, sol_rx) = mpsc::channel::<SolutionMessage>();
+    let (sol_tx, sol_rx) = mpsc::unbounded_channel::<SolverMessage>();
     send_solve_tasks(width, height, shapes, sol_tx, task_tx);
 
-    while let Ok(s) = sol_rx.recv() {
-        match s {
-            SolutionMessage::TotalSolution(s) => {
+    return (sol_rx, workers);
+}
+
+pub fn solve(width: u32, height: u32, shapes: Vec<Shape>) -> Option<Solution> {
+    let (mut sol_rx, workers) = solve_async(width, height, shapes);
+
+    while let Some(msg) = sol_rx.blocking_recv() {
+        match msg {
+            SolverMessage::SolutionMessage(SolutionMessage {
+                payload: SolutionPayload::TotalSolution(sol),
+                ..
+            }) => {
                 // Drop sol_rx so that workers finish early
                 drop(sol_rx);
-
-                // Drain all tasks so that workers don't begin useless tasks
-                while let Ok(_) = task_rx.recv() {}
 
                 // Wait for all workers to finish
                 for w in workers {
                     let _ = w.join();
                 }
 
-                return Some(s);
+                return Some(sol);
             }
-            SolutionMessage::PartialSolution(_) => continue,
-            SolutionMessage::Ping => continue,
+            _ => continue,
         }
     }
 
@@ -220,12 +244,12 @@ fn spawn_workers(task_rx: &crossbeam_channel::Receiver<SolveTask>) -> Vec<JoinHa
         .map(|i| {
             let task_rx = task_rx.clone();
 
-            thread::spawn(move || run_worker(task_rx))
+            thread::spawn(move || run_worker(i as u32, task_rx))
         })
         .collect()
 }
 
-fn run_worker(task_rx: crossbeam_channel::Receiver<SolveTask>) {
+fn run_worker(threadi: u32, task_rx: crossbeam_channel::Receiver<SolveTask>) {
     while let Ok(t) = task_rx.recv() {
         let SolveTask {
             width,
@@ -236,11 +260,11 @@ fn run_worker(task_rx: crossbeam_channel::Receiver<SolveTask>) {
             mut remaining,
         } = t;
 
-        if sol_tx.send(SolutionMessage::Ping).is_err() {
+        if sol_tx.send(SolverMessage::Ping).is_err() {
             break;
         }
 
-        let mut solver = Solver::new(width, height, sol_tx);
+        let mut solver = Solver::new(threadi, width, height, sol_tx);
 
         if !solver.try_seed(&seed) {
             continue;
@@ -254,7 +278,7 @@ fn send_solve_tasks(
     width: u32,
     height: u32,
     shapes: Vec<Shape>,
-    sol_tx: mpsc::Sender<SolutionMessage>,
+    sol_tx: mpsc::UnboundedSender<SolverMessage>,
     task_tx: crossbeam_channel::Sender<SolveTask>,
 ) {
     let (candidates, remaining) = shapes_to_candidates(shapes);
