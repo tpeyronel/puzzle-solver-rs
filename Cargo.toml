@@ -10,3 +10,4 @@ bitflags = "2.4.0"
 crossbeam-channel = "0.5.8"
 glam = "0.24.2"
 serde = { version = "1.0.189", features = ["derive"] }
+tokio = { version = "1.33.0", features = ["sync"] }
