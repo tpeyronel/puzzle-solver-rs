@@ -1,5 +1,6 @@
 use std::{
     fmt::Display,
+    sync::{atomic::AtomicBool, Arc},
     thread::{self, available_parallelism, JoinHandle},
     time::{Duration, Instant},
 };
@@ -95,18 +96,24 @@ struct Solver<'a> {
     total_remaining: u32,
     solution: SolutionWithBorrows<'a>,
     sol_tx: mpsc::UnboundedSender<SolverMessage>,
-    last_report: Instant,
+    should_report: &'a AtomicBool,
 }
 
 impl<'a> Solver<'a> {
-    fn new(threadi: u32, width: u32, height: u32, sol_tx: mpsc::UnboundedSender<SolverMessage>) -> Self {
+    fn new(
+        threadi: u32,
+        width: u32,
+        height: u32,
+        sol_tx: mpsc::UnboundedSender<SolverMessage>,
+        should_report: &'a AtomicBool,
+    ) -> Self {
         Self {
             threadi,
             board: Board::new(width, height),
             total_remaining: 0,
             solution: SolutionWithBorrows { placed_shapes: vec![] },
             sol_tx,
-            last_report: Instant::now(),
+            should_report,
         }
     }
 
@@ -145,10 +152,8 @@ impl<'a> Solver<'a> {
             return true;
         }
 
-        // TODO: use non atomic bools that get set by another background thread.
-        let now = Instant::now();
-        if (now - self.last_report) > UPDATE_INTERVAL {
-            self.last_report = now;
+        if self.should_report.load(std::sync::atomic::Ordering::Relaxed) {
+            self.should_report.store(false, std::sync::atomic::Ordering::Relaxed);
 
             let message = SolverMessage::SolutionMessage(SolutionMessage {
                 threadi: self.threadi,
@@ -204,7 +209,10 @@ pub fn solve_async(
     width: u32,
     height: u32,
     shapes: Vec<Shape>,
-) -> (mpsc::UnboundedReceiver<SolverMessage>, Vec<JoinHandle<()>>) {
+) -> (
+    mpsc::UnboundedReceiver<SolverMessage>,
+    (Arc<AtomicBool>, Vec<JoinHandle<()>>),
+) {
     let (task_tx, task_rx) = crossbeam_channel::unbounded::<SolveTask>();
     let workers = spawn_workers(&task_rx);
 
@@ -215,7 +223,7 @@ pub fn solve_async(
 }
 
 pub fn solve(width: u32, height: u32, shapes: Vec<Shape>) -> Option<Solution> {
-    let (mut sol_rx, workers) = solve_async(width, height, shapes);
+    let (mut sol_rx, (terminate_timer, workers)) = solve_async(width, height, shapes);
 
     let mut sum = Duration::ZERO;
     let mut count = 0;
@@ -234,6 +242,7 @@ pub fn solve(width: u32, height: u32, shapes: Vec<Shape>) -> Option<Solution> {
                     let _ = w.join();
                 }
 
+                terminate_timer.store(true, std::sync::atomic::Ordering::Relaxed);
                 return Some(sol);
             }
             SolverMessage::SolverEnd { elapsed } => {
@@ -246,22 +255,46 @@ pub fn solve(width: u32, height: u32, shapes: Vec<Shape>) -> Option<Solution> {
 
     println!("Took: {} ms", (sum / count).as_millis());
 
+    terminate_timer.store(true, std::sync::atomic::Ordering::Relaxed);
     None
 }
 
-fn spawn_workers(task_rx: &crossbeam_channel::Receiver<SolveTask>) -> Vec<JoinHandle<()>> {
+fn spawn_workers(task_rx: &crossbeam_channel::Receiver<SolveTask>) -> (Arc<AtomicBool>, Vec<JoinHandle<()>>) {
     let count = available_parallelism().unwrap().get();
 
-    (0..count)
-        .map(|i| {
-            let task_rx = task_rx.clone();
+    let should_report_vars: Vec<Arc<AtomicBool>> = (0..count).map(|_| Arc::new(AtomicBool::new(false))).collect();
 
-            thread::spawn(move || run_worker(i as u32, task_rx))
-        })
-        .collect()
+    let terminate_timer = Arc::new(AtomicBool::new(false));
+
+    {
+        let terminate_timer = terminate_timer.clone();
+        let should_report_vars = should_report_vars.clone();
+        thread::spawn(move || {
+            while !terminate_timer.load(std::sync::atomic::Ordering::Relaxed) {
+                should_report_vars
+                    .iter()
+                    .for_each(|sr| sr.store(true, std::sync::atomic::Ordering::Relaxed));
+
+                thread::sleep(UPDATE_INTERVAL);
+            }
+        });
+    }
+
+    (
+        terminate_timer,
+        should_report_vars
+            .into_iter()
+            .enumerate()
+            .map(|(i, should_report)| {
+                let task_rx = task_rx.clone();
+
+                thread::spawn(move || run_worker(i as u32, task_rx, should_report))
+            })
+            .collect(),
+    )
 }
 
-fn run_worker(threadi: u32, task_rx: crossbeam_channel::Receiver<SolveTask>) {
+fn run_worker(threadi: u32, task_rx: crossbeam_channel::Receiver<SolveTask>, should_report: Arc<AtomicBool>) {
     while let Ok(t) = task_rx.recv() {
         let SolveTask {
             width,
@@ -276,7 +309,7 @@ fn run_worker(threadi: u32, task_rx: crossbeam_channel::Receiver<SolveTask>) {
             break;
         }
 
-        let mut solver = Solver::new(threadi, width, height, sol_tx);
+        let mut solver = Solver::new(threadi, width, height, sol_tx, &should_report);
 
         if !solver.try_seed(&seed) {
             continue;
