@@ -72,12 +72,13 @@ pub enum SolverMessage {
 
 pub struct SolutionMessage {
     pub threadi: u32,
-    pub payload: SolutionPayload,
+    pub solution: Solution,
+    pub kind: SolutionKind,
 }
 
-pub enum SolutionPayload {
-    PartialSolution(Solution),
-    TotalSolution(Solution),
+pub enum SolutionKind {
+    PartialSolution,
+    TotalSolution,
 }
 
 struct Solver<'a> {
@@ -119,7 +120,8 @@ impl<'a> Solver<'a> {
         if solved {
             let _ = self.solver_tx.send(SolverMessage::SolutionMessage(SolutionMessage {
                 threadi: self.threadi,
-                payload: SolutionPayload::TotalSolution((&self.solution).into()),
+                solution: (&self.solution).into(),
+                kind: SolutionKind::TotalSolution,
             }));
         }
     }
@@ -147,7 +149,8 @@ impl<'a> Solver<'a> {
 
             let message = SolverMessage::SolutionMessage(SolutionMessage {
                 threadi: self.threadi,
-                payload: SolutionPayload::PartialSolution((&self.solution).into()),
+                solution: (&self.solution).into(),
+                kind: SolutionKind::PartialSolution,
             });
 
             if self.solver_tx.send(message).is_err() {
@@ -340,7 +343,8 @@ pub fn solve(width: u32, height: u32, shapes: Vec<Shape>) -> Option<Solution> {
     while let Some(msg) = solve_job.blocking_recv() {
         match msg {
             SolverMessage::SolutionMessage(SolutionMessage {
-                payload: SolutionPayload::TotalSolution(solution),
+                solution,
+                kind: SolutionKind::TotalSolution,
                 ..
             }) => {
                 return Some(solution);
