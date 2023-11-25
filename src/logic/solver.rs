@@ -66,8 +66,6 @@ impl Display for Solution {
 }
 
 pub enum SolverMessage {
-    ConnectionCheck,
-    SolversBegin { threads: u32 },
     SolutionMessage(SolutionMessage),
     SolverEnd { elapsed: Duration },
 }
@@ -226,73 +224,105 @@ impl Drop for SolveJob {
     }
 }
 
+fn run_timer_thread(solvers_finished: &AtomicBool, should_report_array: &Vec<AtomicBool>) {
+    while !solvers_finished.load(atomic::Ordering::Relaxed) {
+        for sr in should_report_array {
+            sr.store(true, atomic::Ordering::Relaxed);
+        }
+
+        thread::sleep(UPDATE_INTERVAL);
+    }
+}
+
+fn run_solver_thread(
+    width: u32,
+    height: u32,
+    seed: Vec<(Vec2, Shape)>,
+    candidates: &Vec<Candidate>,
+    mut remaining: Vec<u32>,
+    solver_tx: mpsc::UnboundedSender<SolverMessage>,
+    should_report_array: &Vec<AtomicBool>,
+) {
+    let threadi = rayon::current_thread_index().unwrap();
+
+    // Quick exit
+    if solver_tx.is_closed() {
+        return;
+    }
+
+    let mut solver = Solver::new(threadi as u32, width, height, solver_tx, &should_report_array[threadi]);
+
+    if !solver.try_seed(&seed) {
+        return;
+    }
+
+    solver.solve(candidates, &mut remaining);
+}
+
+fn run_solver_threads(
+    width: u32,
+    height: u32,
+    candidates: &Vec<Candidate>,
+    remaining: Vec<u32>,
+    solver_tx: mpsc::UnboundedSender<SolverMessage>,
+    should_report_array: &Vec<AtomicBool>,
+) {
+    rayon::scope(move |s| {
+        for x in 0..width {
+            for y in 0..height {
+                for (i, c) in candidates.iter().enumerate() {
+                    for v in &c.variations {
+                        let seed = vec![(Vec2 { x, y }, v.clone())];
+                        let mut remaining = remaining.clone();
+                        remaining[i] -= 1;
+                        let solver_tx = solver_tx.clone();
+
+                        s.spawn(move |_| {
+                            run_solver_thread(
+                                width,
+                                height,
+                                seed,
+                                candidates,
+                                remaining,
+                                solver_tx,
+                                should_report_array,
+                            );
+                        });
+                    }
+                }
+            }
+        }
+    });
+}
+
+fn run_controller_thread(width: u32, height: u32, shapes: Vec<Shape>, solver_tx: mpsc::UnboundedSender<SolverMessage>) {
+    let thread_count = rayon::current_num_threads(); // Also initializes global thread pool
+
+    let (candidates, remaining) = shapes_to_candidates(shapes);
+    let candidates = &candidates;
+
+    let solvers_finished = AtomicBool::new(false);
+    let solvers_finished = &solvers_finished;
+
+    let should_report_array: Vec<AtomicBool> = (0..thread_count).map(|_| AtomicBool::new(false)).collect();
+    let should_report_array = &should_report_array;
+
+    thread::scope(|s| {
+        s.spawn(move || {
+            run_timer_thread(solvers_finished, should_report_array);
+        });
+
+        run_solver_threads(width, height, candidates, remaining, solver_tx, should_report_array);
+
+        solvers_finished.store(true, atomic::Ordering::Relaxed);
+    });
+}
+
 pub fn solve_async(width: u32, height: u32, shapes: Vec<Shape>) -> SolveJob {
     let (solver_tx, solver_rx) = mpsc::unbounded_channel::<SolverMessage>();
 
     let controller_thread = thread::spawn(move || {
-        let (candidates, remaining) = shapes_to_candidates(shapes);
-
-        let thread_count = rayon::current_num_threads(); // Also initializes global thread pool
-
-        let solvers_done = AtomicBool::new(false);
-        let solvers_done = &solvers_done;
-
-        let should_report_vars: Vec<AtomicBool> = (0..thread_count).map(|_| AtomicBool::new(false)).collect();
-
-        let candidates_ref = &candidates;
-        let should_report_vars_ref = &should_report_vars;
-
-        thread::scope(|s| {
-            s.spawn(move || {
-                while !solvers_done.load(atomic::Ordering::Relaxed) {
-                    for sr in should_report_vars_ref {
-                        sr.store(true, atomic::Ordering::Relaxed);
-                    }
-
-                    thread::sleep(UPDATE_INTERVAL);
-                }
-            });
-
-            rayon::scope(move |s| {
-                for x in 0..width {
-                    for y in 0..height {
-                        for (i, c) in candidates_ref.iter().enumerate() {
-                            for v in &c.variations {
-                                let solver_tx = solver_tx.clone();
-                                let seed = vec![(Vec2 { x, y }, v.clone())];
-                                let mut remaining = remaining.clone();
-                                remaining[i] -= 1;
-                                let should_report_vars_ref = should_report_vars_ref;
-
-                                s.spawn(move |_| {
-                                    let threadi = rayon::current_thread_index().unwrap();
-
-                                    if solver_tx.send(SolverMessage::ConnectionCheck).is_err() {
-                                        return;
-                                    }
-
-                                    let mut solver = Solver::new(
-                                        threadi as u32,
-                                        width,
-                                        height,
-                                        solver_tx,
-                                        &should_report_vars_ref[threadi],
-                                    );
-
-                                    if !solver.try_seed(&seed) {
-                                        return;
-                                    }
-
-                                    solver.solve(candidates_ref, &mut remaining);
-                                });
-                            }
-                        }
-                    }
-                }
-            });
-
-            solvers_done.store(true, atomic::Ordering::Relaxed);
-        });
+        run_controller_thread(width, height, shapes, solver_tx);
     });
 
     SolveJob {
