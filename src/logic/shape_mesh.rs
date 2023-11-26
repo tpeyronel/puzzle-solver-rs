@@ -129,7 +129,9 @@ impl ShapeMesh {
 
 impl PartialEq for ShapeMesh {
     fn eq(&self, other: &Self) -> bool {
-        assert_eq!(self.nodes.len(), other.nodes.len());
+        if self.nodes.len() != other.nodes.len() {
+            return false;
+        }
 
         return Iterator::zip(self.nodes.iter(), other.nodes.iter()).all(|(a, b)| a == b);
     }
