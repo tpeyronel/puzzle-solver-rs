@@ -24,7 +24,7 @@ impl NodeMatrix {
     pub fn from_solution(width: u32, height: u32, solution: &Solution) -> Self {
         let mut mat = Self::new(width, height);
 
-        for (pos, shape) in &solution.placed_shapes {
+        for (pos, shape) in &solution.placements {
             let mesh = shape.mesh();
 
             for n in mesh.nodes() {

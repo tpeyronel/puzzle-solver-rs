@@ -21,18 +21,18 @@ struct Candidate {
 
 #[derive(Debug, Clone)]
 struct SolutionWithBorrows<'a> {
-    placed_shapes: Vec<(Vec2, &'a Shape)>,
+    placements: Vec<(Vec2, &'a Shape)>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Solution {
-    pub placed_shapes: Vec<(Vec2, Shape)>,
+    pub placements: Vec<(Vec2, Shape)>,
 }
 
 impl<'a> From<&SolutionWithBorrows<'a>> for Solution {
     fn from(solution: &SolutionWithBorrows<'a>) -> Self {
         Self {
-            placed_shapes: solution.placed_shapes.iter().map(|&(p, s)| (p, s.clone())).collect(),
+            placements: solution.placements.iter().map(|&(p, s)| (p, s.clone())).collect(),
         }
     }
 }
@@ -50,7 +50,7 @@ impl Display for Solution {
             w = COL_WIDTH,
         );
 
-        for (p, s) in &self.placed_shapes {
+        for (p, s) in &self.placements {
             output += &format!(
                 "{0: ^w$}   {1: ^w$}   {2: ^w$}   {3: ^w$}\n",
                 format!("\"{}\"", s.metadata().id),
@@ -66,6 +66,7 @@ impl Display for Solution {
 }
 
 pub enum SolverMessage {
+    SolverJobBegin { equivalences: Vec<Vec<String>> },
     SolutionMessage(SolutionMessage),
     SolverEnd { elapsed: Duration },
 }
@@ -102,7 +103,7 @@ impl<'a> Solver<'a> {
             threadi,
             board: Board::new(width, height),
             total_remaining: 0,
-            solution: SolutionWithBorrows { placed_shapes: vec![] },
+            solution: SolutionWithBorrows { placements: vec![] },
             solver_tx,
             should_report,
         }
@@ -133,7 +134,7 @@ impl<'a> Solver<'a> {
             }
 
             self.board.insert_at(s.mesh(), *p);
-            self.solution.placed_shapes.push((*p, s));
+            self.solution.placements.push((*p, s));
         }
 
         return true;
@@ -172,7 +173,7 @@ impl<'a> Solver<'a> {
 
             for v in &c.variations {
                 if self.board.fits_at(v.mesh(), pos) {
-                    self.solution.placed_shapes.push((pos, v));
+                    self.solution.placements.push((pos, v));
                     self.board.insert_at(v.mesh(), pos);
 
                     if self.solve_rec(candidates, remaining, pos) {
@@ -180,7 +181,7 @@ impl<'a> Solver<'a> {
                     }
 
                     self.board.remove_at(v.mesh(), pos);
-                    self.solution.placed_shapes.pop();
+                    self.solution.placements.pop();
                 }
             }
 
@@ -302,6 +303,9 @@ fn run_controller_thread(width: u32, height: u32, shapes: Vec<Shape>, solver_tx:
     let thread_count = rayon::current_num_threads(); // Also initializes global thread pool
 
     let (candidates, remaining) = shapes_to_candidates(shapes);
+
+    send_begin_message(&candidates, &solver_tx);
+
     let candidates = &candidates;
 
     let solvers_finished = AtomicBool::new(false);
@@ -319,6 +323,12 @@ fn run_controller_thread(width: u32, height: u32, shapes: Vec<Shape>, solver_tx:
 
         solvers_finished.store(true, atomic::Ordering::Relaxed);
     });
+}
+
+fn send_begin_message(candidates: &Vec<Candidate>, solver_tx: &mpsc::UnboundedSender<SolverMessage>) {
+    let equivalences: Vec<Vec<String>> = candidates.iter().map(|c| c.ids.clone()).collect();
+
+    let _ = solver_tx.send(SolverMessage::SolverJobBegin { equivalences });
 }
 
 pub fn solve_async(width: u32, height: u32, shapes: Vec<Shape>) -> SolveJob {
@@ -367,7 +377,7 @@ fn shapes_to_candidates(shapes: Vec<Shape>) -> (Vec<Candidate>, Vec<u32>) {
         .iter()
         .map(|s| Candidate {
             ids: vec![s.metadata().id.clone()],
-                    variations: compute_shape_variations(s),
+            variations: compute_shape_variations(s),
         })
         .collect();
 
