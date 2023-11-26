@@ -15,7 +15,7 @@ const UPDATE_INTERVAL: Duration = Duration::from_millis(100);
 
 #[derive(Debug, Clone)]
 struct Candidate {
-    id: String,
+    ids: Vec<String>,
     variations: Vec<Shape>,
 }
 
@@ -363,20 +363,16 @@ pub fn solve(width: u32, height: u32, shapes: Vec<Shape>) -> Option<Solution> {
 }
 
 fn shapes_to_candidates(shapes: Vec<Shape>) -> (Vec<Candidate>, Vec<u32>) {
-    shapes
+    let mut candidates: Vec<Candidate> = shapes
         .iter()
-        .map(|s| {
-            (
-                Candidate {
-                    id: s.metadata().id.clone(),
+        .map(|s| Candidate {
+            ids: vec![s.metadata().id.clone()],
                     variations: compute_shape_variations(s),
-                },
-                1,
-            )
         })
-        .collect::<Vec<(Candidate, u32)>>()
-        .into_iter()
-        .unzip()
+        .collect();
+
+    dedup_variations(&mut candidates);
+    group_equivalent_candidates(candidates)
 }
 
 fn compute_shape_variations(shape: &Shape) -> Vec<Shape> {
@@ -394,6 +390,45 @@ fn compute_shape_variations(shape: &Shape) -> Vec<Shape> {
     push_rotations(shape.flipped_hor(), &mut variations);
 
     variations
+}
+
+fn dedup_variations(candidates: &mut Vec<Candidate>) {
+    for candidate in candidates {
+        let original_variations: Vec<Shape> = std::mem::replace(&mut candidate.variations, vec![]);
+
+        for v in original_variations {
+            if candidate.variations.iter().all(|dv| dv.mesh() != v.mesh()) {
+                candidate.variations.push(v);
+            }
+        }
+    }
+}
+
+fn group_equivalent_candidates(candidates: Vec<Candidate>) -> (Vec<Candidate>, Vec<u32>) {
+    let mut merged_candidates: Vec<(Candidate, u32)> = vec![];
+
+    for mut candidate in candidates {
+        assert_eq!(candidate.ids.len(), 1);
+
+        let fst_variation = candidate.variations[0].mesh();
+        let equivalent_candidate = merged_candidates
+            .iter_mut()
+            .find(|(cdt, _)| cdt.variations.iter().any(|v| v.mesh() == fst_variation));
+
+        if let Some((eq_cdt, eq_cdt_cnt)) = equivalent_candidate {
+            let id = candidate.ids.pop().unwrap();
+
+            if !eq_cdt.ids.contains(&id) {
+                eq_cdt.ids.push(id);
+            }
+
+            *eq_cdt_cnt += 1;
+        } else {
+            merged_candidates.push((candidate, 1));
+        }
+    }
+
+    merged_candidates.into_iter().unzip()
 }
 
 #[cfg(test)]
